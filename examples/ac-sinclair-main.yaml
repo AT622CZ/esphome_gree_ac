@@ -52,6 +52,9 @@ climate:
       name: ${devicename} X-fan
     save_switch:
       name: ${devicename} Save|8 Heat
+    # optional: turn OFF to make the unit execute commands from HA silently
+    beeper_switch:
+      name: ${devicename} Beeper
 
 wifi:
   ssid: !secret wifi_ssid

@@ -6,7 +6,7 @@ This generally replaces stock WiFi module, sometimes giving a little more advanc
 
 Work is still in progress!
 
-Tested with Sinclair AC (MV-H09BIF), mostly works, sometimes need to send parameter change twice - need to investigate.
+Tested with Sinclair AC (MV-H09BIF), AYRTON AYL-12BIR and Coolexpert ACH-09BI.
 
 Communication protocol is based on my own reverse-engineering.
 
@@ -38,7 +38,16 @@ On some stock WiFi PCBs AC unit connector pins are marked on silkscreen.
 
 ![Connection schematic](./images/schematic.png)
 
+**OPTIONAL ENTITIES**
+* `horizontal_swing_select`, `vertical_swing_select` - detailed louver positions
+* `display_select`, `display_unit_select` - unit display mode and C/F
+* `plasma_switch`, `sleep_switch`, `xfan_switch`, `save_switch` - unit features
+* `beeper_switch` - ON (default) = unit beeps on every command from HA, OFF = commands are executed silently (IR remote still beeps). The unit does not report this flag, the switch keeps its own state (`restore_mode`, default `RESTORE_DEFAULT_ON`).
+* `current_temperature_sensor` - id of an external sensor to use as current temperature instead of the unit's own reading
+
 **NOTES**
+* Packets are sent on a fixed 300 ms timer like the stock WiFi module. Sending right after each unit report (previous behaviour) made some units ignore commands, see [#2](https://github.com/piotrva/esphome_gree_ac/issues/2) and [#25](https://github.com/piotrva/esphome_gree_ac/issues/25).
+* Climate state is published to HA only when it changes.
 * It was reported [#1](https://github.com/piotrva/esphome_gree_ac/issues/1) that with some changes the code works with Lennox li024ci AC
 
 **TODO**
