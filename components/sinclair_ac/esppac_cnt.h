@@ -164,6 +164,7 @@ class SinclairACCNT : public SinclairAC {
     protected:
         ACState state_ = ACState::Initializing; /* Stores if the AC is responsive or not */
         ACUpdate update_ = ACUpdate::NoUpdate;  /* Stores if we need tu send update to AC or no */
+        bool publish_pending_ = false;          /* Publish climate state on next handled report even if unchanged */
 
         climate::ClimateMode mode_internal_;
         bool power_internal_;

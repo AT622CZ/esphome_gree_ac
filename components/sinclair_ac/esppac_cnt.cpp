@@ -71,6 +71,9 @@ void SinclairACCNT::control(const climate::ClimateCall &call)
     if (this->state_ != ACState::Ready)
         return;
 
+    /* make sure HA gets the confirmed state once the unit has processed this request */
+    this->publish_pending_ = true;
+
     if (call.get_mode().has_value())
     {
         ESP_LOGV(TAG, "Requested mode change");
@@ -593,8 +596,16 @@ void SinclairACCNT::handle_packet()
         this->serialProcess_.data.erase(this->serialProcess_.data.begin(), this->serialProcess_.data.begin() + 4); /* remove header */
         this->serialProcess_.data.pop_back();  /* remove checksum */
         /* now process the data */
-        this->processUnitReport();
-        this->publish_state();
+        bool changed = this->processUnitReport();
+        /* Reports arrive every ~300 ms; publishing each one floods Home Assistant
+           and makes a value just changed in HA flip back before the unit confirms it.
+           Publish only when something changed, or once after a request from HA so
+           HA sees the confirmed state even if it equals what it asked for. */
+        if (changed || this->publish_pending_)
+        {
+            this->publish_pending_ = false;
+            this->publish_state();
+        }
     }
     else 
     {
