@@ -23,14 +23,14 @@ static const float TEMPERATURE_TOLERANCE = 2;  // The tolerance to allow when ch
 static const uint8_t TEMPERATURE_THRESHOLD = 100;  // Maximum temperature the AC can report (formally 119.5 for sinclair protocol, but 100 is impossible, soo...)
 
 enum class FanMode : uint8_t {
-    AUTO,
-    QUIET,
-    LOW,
-    MEDL,
-    MED,
-    MEDH,
-    HIGH,
-    TURBO,
+    Auto,
+    Quiet,
+    Low,
+    MedLow,
+    Med,
+    MedHigh,
+    High,
+    Turbo,
 };
 
 /* labels for units with 5 fan speeds (fan_speeds: 5, default) */

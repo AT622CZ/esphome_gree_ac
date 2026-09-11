@@ -250,14 +250,14 @@ void SinclairACCNT::send_packet()
     {
         switch (this->fan_mode_from_label(this->get_custom_fan_mode().c_str()))
         {
-            case FanMode::LOW:   fanSpeed1 = 1; fanSpeed2 = 1; break;
-            case FanMode::QUIET: fanSpeed1 = 1; fanSpeed2 = 1; fanQuiet = true; break;
-            case FanMode::MEDL:  fanSpeed1 = 2; fanSpeed2 = 2; break;
-            case FanMode::MED:   fanSpeed1 = 3; fanSpeed2 = 2; break;
-            case FanMode::MEDH:  fanSpeed1 = 4; fanSpeed2 = 3; break;
-            case FanMode::HIGH:  fanSpeed1 = 5; fanSpeed2 = 3; break;
-            case FanMode::TURBO: fanSpeed1 = 5; fanSpeed2 = 3; fanTurbo = true; break;
-            case FanMode::AUTO:
+            case FanMode::Low:   fanSpeed1 = 1; fanSpeed2 = 1; break;
+            case FanMode::Quiet: fanSpeed1 = 1; fanSpeed2 = 1; fanQuiet = true; break;
+            case FanMode::MedLow:  fanSpeed1 = 2; fanSpeed2 = 2; break;
+            case FanMode::Med:   fanSpeed1 = 3; fanSpeed2 = 2; break;
+            case FanMode::MedHigh:  fanSpeed1 = 4; fanSpeed2 = 3; break;
+            case FanMode::High:  fanSpeed1 = 5; fanSpeed2 = 3; break;
+            case FanMode::Turbo: fanSpeed1 = 5; fanSpeed2 = 3; fanTurbo = true; break;
+            case FanMode::Auto:
             default:             break;
         }
     }
@@ -702,11 +702,11 @@ const char* SinclairACCNT::determine_fan_mode()
 
     if (fanTurbo)
     {
-        return this->fan_mode_label(FanMode::TURBO);
+        return this->fan_mode_label(FanMode::Turbo);
     }
     if (fanQuiet)
     {
-        return this->fan_mode_label(FanMode::QUIET);
+        return this->fan_mode_label(FanMode::Quiet);
     }
 
     /* 5-speed units (Sinclair MV-H09BIF) report the fine speed in fanSpeed1 (1..5)
@@ -718,26 +718,26 @@ const char* SinclairACCNT::determine_fan_mode()
     {
         switch (fanSpeed1)
         {
-            case 1: return this->fan_mode_label(FanMode::LOW);
-            case 2: return this->fan_mode_label(FanMode::MEDL);
-            case 3: return this->fan_mode_label(FanMode::MED);
-            case 4: return this->fan_mode_label(FanMode::MEDH);
-            case 5: return this->fan_mode_label(FanMode::HIGH);
+            case 1: return this->fan_mode_label(FanMode::Low);
+            case 2: return this->fan_mode_label(FanMode::MedLow);
+            case 3: return this->fan_mode_label(FanMode::Med);
+            case 4: return this->fan_mode_label(FanMode::MedHigh);
+            case 5: return this->fan_mode_label(FanMode::High);
             default: break;
         }
     }
 
     switch (fanSpeed2)
     {
-        case 0: return this->fan_mode_label(FanMode::AUTO);
-        case 1: return this->fan_mode_label(FanMode::LOW);
-        case 2: return this->fan_mode_label(FanMode::MED);
-        case 3: return this->fan_mode_label(FanMode::HIGH);
+        case 0: return this->fan_mode_label(FanMode::Auto);
+        case 1: return this->fan_mode_label(FanMode::Low);
+        case 2: return this->fan_mode_label(FanMode::Med);
+        case 3: return this->fan_mode_label(FanMode::High);
         default: break;
     }
 
     ESP_LOGW(TAG, "Received unknown fan mode (fanSpeed1=%u fanSpeed2=%u)", fanSpeed1, fanSpeed2);
-    return this->fan_mode_label(FanMode::AUTO);
+    return this->fan_mode_label(FanMode::Auto);
 }
 
 std::string SinclairACCNT::determine_vertical_swing()
