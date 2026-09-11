@@ -483,6 +483,12 @@ void SinclairACCNT::send_packet()
         packet[protocol::REPORT_PLASMA2_BYTE] |= protocol::REPORT_PLASMA2_MASK;
     }
 
+    /* BEEPER --------------------------------------------------------------------------- */
+    if (!this->beeper_state_)
+    {
+        packet[protocol::SET_NO_BEEP_BYTE] |= protocol::SET_NO_BEEP_MASK;
+    }
+
     /* SLEEP --------------------------------------------------------------------------- */
     if (this->sleep_state_)
     {
@@ -955,6 +961,15 @@ void SinclairACCNT::on_plasma_change(bool plasma)
 
     this->update_ = ACUpdate::UpdateStart;
     this->plasma_state_ = plasma;
+}
+
+void SinclairACCNT::on_beeper_change(bool beeper)
+{
+    /* Write-only flag carried in every SET packet; no change packet needed and
+       no need to wait for the unit to be ready. */
+    ESP_LOGD(TAG, "Setting beeper %s", beeper ? "on" : "off");
+
+    this->beeper_state_ = beeper;
 }
 
 void SinclairACCNT::on_sleep_change(bool sleep)

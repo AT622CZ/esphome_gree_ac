@@ -122,6 +122,11 @@ namespace protocol {
 
     /* SET packet shares all the byte definition with REPORT */
     static const uint8_t SET_PACKET_LEN        = 45;
+
+    /* SET only: when set, the unit executes the command without beeping
+       (same flag the Gree+ app uses for its "quiet" option); not reported back */
+    static const uint8_t SET_NO_BEEP_BYTE      = 40;
+    static const uint8_t SET_NO_BEEP_MASK      = 0b00000001;
     
     static const uint8_t SET_CONST_02_BYTE     = 39;
     static const uint8_t SET_CONST_02_VAL      = 0x02;
@@ -154,6 +159,7 @@ class SinclairACCNT : public SinclairAC {
         void on_display_unit_change(const std::string &display_unit) override;
 
         void on_plasma_change(bool plasma) override;
+        void on_beeper_change(bool beeper) override;
         void on_sleep_change(bool sleep) override;
         void on_xfan_change(bool xfan) override;
         void on_save_change(bool save) override;

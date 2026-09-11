@@ -34,6 +34,7 @@ CONF_PLASMA_SWITCH              = "plasma_switch"
 CONF_SLEEP_SWITCH               = "sleep_switch"
 CONF_XFAN_SWITCH                = "xfan_switch"
 CONF_SAVE_SWITCH                = "save_switch"
+CONF_BEEPER_SWITCH              = "beeper_switch"
 
 CONF_CURRENT_TEMPERATURE_SENSOR = "current_temperature_sensor"
 
@@ -79,6 +80,13 @@ DISPLAY_UNIT_OPTIONS = [
 switch_schema = switch.switch_schema(switch.Switch).extend(cv.COMPONENT_SCHEMA).extend(
     {cv.GenerateID(): cv.declare_id(SinclairACSwitch)}
 )
+# The unit does not report the beeper flag back, so the switch keeps its own state.
+# Default ON = unit beeps on every command (stock behaviour).
+beeper_switch_schema = switch.switch_schema(
+    switch.Switch, default_restore_mode="RESTORE_DEFAULT_ON"
+).extend(cv.COMPONENT_SCHEMA).extend(
+    {cv.GenerateID(): cv.declare_id(SinclairACSwitch)}
+)
 select_schema = select.select_schema(select.Select).extend(
     {cv.GenerateID(CONF_ID): cv.declare_id(SinclairACSelect)}
 )
@@ -93,6 +101,7 @@ SCHEMA = climate.climate_schema(climate.Climate).extend(
         cv.Optional(CONF_SLEEP_SWITCH): switch_schema,
         cv.Optional(CONF_XFAN_SWITCH): switch_schema,
         cv.Optional(CONF_SAVE_SWITCH): switch_schema,
+        cv.Optional(CONF_BEEPER_SWITCH): beeper_switch_schema,
     }
 ).extend(uart.UART_DEVICE_SCHEMA)
 
@@ -140,7 +149,7 @@ async def to_code(config):
         sens = await cg.get_variable(config[CONF_CURRENT_TEMPERATURE_SENSOR])
         cg.add(var.set_current_temperature_sensor(sens))
         
-    for s in [CONF_PLASMA_SWITCH, CONF_SLEEP_SWITCH, CONF_XFAN_SWITCH, CONF_SAVE_SWITCH]:
+    for s in [CONF_PLASMA_SWITCH, CONF_SLEEP_SWITCH, CONF_XFAN_SWITCH, CONF_SAVE_SWITCH, CONF_BEEPER_SWITCH]:
         if s in config:
             conf = config[s]
             a_switch = cg.new_Pvariable(conf[CONF_ID])

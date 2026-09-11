@@ -103,6 +103,7 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         void set_sleep_switch(switch_::Switch *sleep_switch);
         void set_xfan_switch(switch_::Switch *plasma_switch);
         void set_save_switch(switch_::Switch *plasma_switch);
+        void set_beeper_switch(switch_::Switch *beeper_switch);
 
         void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
 
@@ -120,6 +121,7 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         switch_::Switch *sleep_switch_           = nullptr; /* Switch for sleep */
         switch_::Switch *xfan_switch_            = nullptr; /* Switch for X-fan */
         switch_::Switch *save_switch_            = nullptr; /* Switch for save */
+        switch_::Switch *beeper_switch_          = nullptr; /* Switch for beeper (ON = unit beeps on commands) */
 
         sensor::Sensor *current_temperature_sensor_ = nullptr; /* If user wants to replace reported temperature by an external sensor readout */
 
@@ -133,6 +135,7 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         bool sleep_state_;
         bool xfan_state_;
         bool save_state_;
+        bool beeper_state_ = true; /* Not reported by the unit, kept locally; true = beep */
 
         SerialProcess_t serialProcess_;
 
@@ -169,6 +172,7 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         virtual void on_sleep_change(bool sleep) = 0;
         virtual void on_xfan_change(bool xfan) = 0;
         virtual void on_save_change(bool save) = 0;
+        virtual void on_beeper_change(bool beeper) = 0;
 
         climate::ClimateAction determine_action();
 

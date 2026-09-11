@@ -36,6 +36,14 @@ void SinclairAC::setup()
     this->init_time_ = millis();
     this->last_packet_sent_ = millis();
 
+    /* The beeper flag is write-only, so restore its state from the switch's restore mode */
+    if (this->beeper_switch_ != nullptr)
+    {
+        auto initial = this->beeper_switch_->get_initial_state_with_restore_mode();
+        this->beeper_state_ = initial.value_or(true);
+        this->beeper_switch_->publish_state(this->beeper_state_);
+    }
+
     ESP_LOGI(TAG, "Sinclair AC component v%s starting...", VERSION);
 }
 
@@ -330,6 +338,16 @@ void SinclairAC::set_xfan_switch(switch_::Switch *xfan_switch)
         if (state == this->xfan_state_)
             return;
         this->on_xfan_change(state);
+    });
+}
+
+void SinclairAC::set_beeper_switch(switch_::Switch *beeper_switch)
+{
+    this->beeper_switch_ = beeper_switch;
+    this->beeper_switch_->add_on_state_callback([this](bool state) {
+        if (state == this->beeper_state_)
+            return;
+        this->on_beeper_change(state);
     });
 }
 
