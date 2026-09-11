@@ -38,6 +38,9 @@ CONF_BEEPER_SWITCH              = "beeper_switch"
 
 CONF_CURRENT_TEMPERATURE_SENSOR = "current_temperature_sensor"
 
+CONF_FAN_SPEEDS                 = "fan_speeds"        # 5 (Sinclair MV-H09BIF) or 3 (most Gree-based units)
+CONF_HORIZONTAL_SWING           = "horizontal_swing"  # False for units without motorized horizontal louvers
+
 HORIZONTAL_SWING_OPTIONS = [
     "0 - OFF",
     "1 - Swing - Full",
@@ -105,13 +108,24 @@ SCHEMA = climate.climate_schema(climate.Climate).extend(
     }
 ).extend(uart.UART_DEVICE_SCHEMA)
 
+def _validate_capabilities(config):
+    if not config[CONF_HORIZONTAL_SWING] and CONF_HORIZONTAL_SWING_SELECT in config:
+        raise cv.Invalid(
+            f"{CONF_HORIZONTAL_SWING_SELECT} cannot be used with {CONF_HORIZONTAL_SWING}: false"
+        )
+    return config
+
+
 CONFIG_SCHEMA = cv.All(
     SCHEMA.extend(
         {
             cv.GenerateID(): cv.declare_id(SinclairACCNT),
             cv.Optional(CONF_CURRENT_TEMPERATURE_SENSOR): cv.use_id(sensor.Sensor),
+            cv.Optional(CONF_FAN_SPEEDS, default=5): cv.one_of(3, 5, int=True),
+            cv.Optional(CONF_HORIZONTAL_SWING, default=True): cv.boolean,
         }
     ),
+    _validate_capabilities,
 )
 
 
@@ -120,6 +134,9 @@ async def to_code(config):
     await climate.register_climate(var, config)
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)
+
+    cg.add(var.set_fan_speeds(config[CONF_FAN_SPEEDS]))
+    cg.add(var.set_horizontal_swing(config[CONF_HORIZONTAL_SWING]))
 
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf = config[CONF_HORIZONTAL_SWING_SELECT]

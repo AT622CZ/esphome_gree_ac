@@ -38,6 +38,10 @@ On some stock WiFi PCBs AC unit connector pins are marked on silkscreen.
 
 ![Connection schematic](./images/schematic.png)
 
+**UNIT CAPABILITIES**
+* `fan_speeds: 5` (default, Sinclair MV-H09BIF: Low/Medium-Low/Medium/Medium-High/High) or `fan_speeds: 3` (most Gree-based units with Low/Medium/High, e.g. Coolexpert ACH-09BI). With 3 speeds the fan speed is carried only in the mode byte and the fine speed field is not sent.
+* `horizontal_swing: false` for units without motorized horizontal louvers - the climate entity then offers only Off/Vertical swing and `horizontal_swing_select` is not allowed.
+
 **OPTIONAL ENTITIES**
 * `horizontal_swing_select`, `vertical_swing_select` - detailed louver positions
 * `display_select`, `display_unit_select` - unit display mode and C/F

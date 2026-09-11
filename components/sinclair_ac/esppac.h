@@ -107,6 +107,10 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
 
         void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
 
+        /* Unit capabilities, see climate.py */
+        void set_fan_speeds(uint8_t fan_speeds) { this->fan_speeds_ = fan_speeds; }
+        void set_horizontal_swing(bool horizontal_swing) { this->horizontal_swing_ = horizontal_swing; }
+
         void setup() override;
         void loop() override;
 
@@ -136,6 +140,9 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         bool xfan_state_;
         bool save_state_;
         bool beeper_state_ = true; /* Not reported by the unit, kept locally; true = beep */
+
+        uint8_t fan_speeds_ = 5;        /* 5: Low/Med-Low/Med/Med-High/High (Sinclair MV-H09BIF), 3: Low/Med/High */
+        bool horizontal_swing_ = true;  /* false: unit has no motorized horizontal louvers */
 
         SerialProcess_t serialProcess_;
 

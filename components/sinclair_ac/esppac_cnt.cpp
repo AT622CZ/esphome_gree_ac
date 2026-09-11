@@ -134,6 +134,11 @@ void SinclairACCNT::control(const climate::ClimateCall &call)
                 this->horizontal_swing_state_ = horizontal_swing_options::CMID;
                 break;
         }
+        if (!this->horizontal_swing_)
+        {
+            /* unit has no horizontal louvers, do not ask for any position */
+            this->horizontal_swing_state_ = horizontal_swing_options::OFF;
+        }
     }
 }
 
@@ -305,6 +310,12 @@ void SinclairACCNT::send_packet()
             fanQuiet  = false;
             fanTurbo  = false;
         }
+    }
+
+    /* 3-speed units use only fanSpeed2 (1..3) and do not know the fine 5-level field */
+    if (this->fan_speeds_ == 3)
+    {
+        fanSpeed1 = 0;
     }
 
     packet[protocol::REPORT_FAN_SPD1_BYTE] |= (fanSpeed1 << protocol::REPORT_FAN_SPD1_POS);
@@ -738,44 +749,45 @@ const char* SinclairACCNT::determine_fan_mode()
     uint8_t fanSpeed2 = (this->serialProcess_.data[protocol::REPORT_FAN_SPD2_BYTE]  & protocol::REPORT_FAN_SPD2_MASK) >> protocol::REPORT_FAN_SPD2_POS;
     bool    fanQuiet  = (this->serialProcess_.data[protocol::REPORT_FAN_QUIET_BYTE] & protocol::REPORT_FAN_QUIET_MASK) != 0;
     bool    fanTurbo  = (this->serialProcess_.data[protocol::REPORT_FAN_TURBO_BYTE] & protocol::REPORT_FAN_TURBO_MASK) != 0;
-    /* we have extracted all the data, let's do the processing */
-    if      (fanSpeed1 == 0 && fanSpeed2 == 0 && fanQuiet == false && fanTurbo == false)
-    {
-        return fan_modes::FAN_AUTO;
-    }
-    else if (fanSpeed1 == 1 && fanSpeed2 == 1 && fanQuiet == false && fanTurbo == false)
-    {
-        return fan_modes::FAN_LOW;
-    }
-    else if (fanSpeed1 == 1 && fanSpeed2 == 1 && fanQuiet == true  && fanTurbo == false)
-    {
-        return fan_modes::FAN_QUIET;
-    }
-    else if (fanSpeed1 == 2 && fanSpeed2 == 2 && fanQuiet == false && fanTurbo == false)
-    {
-        return fan_modes::FAN_MEDL;
-    }
-    else if (fanSpeed1 == 3 && fanSpeed2 == 2 && fanQuiet == false && fanTurbo == false)
-    {
-        return fan_modes::FAN_MED;
-    }
-    else if (fanSpeed1 == 4 && fanSpeed2 == 3 && fanQuiet == false && fanTurbo == false)
-    {
-        return fan_modes::FAN_MEDH;
-    }
-    else if (fanSpeed1 == 5 && fanSpeed2 == 3 && fanQuiet == false && fanTurbo == false)
-    {
-        return fan_modes::FAN_HIGH;
-    }
-    else if (fanSpeed1 == 5 && fanSpeed2 == 3 && fanQuiet == false && fanTurbo == true )
+
+    if (fanTurbo)
     {
         return fan_modes::FAN_TURBO;
     }
-    else 
+    if (fanQuiet)
     {
-        ESP_LOGW(TAG, "Received unknown fan mode");
-        return fan_modes::FAN_AUTO;
+        return fan_modes::FAN_QUIET;
     }
+
+    /* 5-speed units (Sinclair MV-H09BIF) report the fine speed in fanSpeed1 (1..5)
+       together with the coarse one in fanSpeed2 (1..3). 3-speed units (e.g. Coolexpert
+       ACH-09BI, Gree 3-speed models) report only fanSpeed2 and keep fanSpeed1 at 0;
+       some units (Lennox, see issue #1) put garbage there. Use fanSpeed1 only when it
+       is plausible, otherwise fall back to fanSpeed2. */
+    if (this->fan_speeds_ == 5)
+    {
+        switch (fanSpeed1)
+        {
+            case 1: return fan_modes::FAN_LOW;
+            case 2: return fan_modes::FAN_MEDL;
+            case 3: return fan_modes::FAN_MED;
+            case 4: return fan_modes::FAN_MEDH;
+            case 5: return fan_modes::FAN_HIGH;
+            default: break;
+        }
+    }
+
+    switch (fanSpeed2)
+    {
+        case 0: return fan_modes::FAN_AUTO;
+        case 1: return fan_modes::FAN_LOW;
+        case 2: return fan_modes::FAN_MED;
+        case 3: return fan_modes::FAN_HIGH;
+        default: break;
+    }
+
+    ESP_LOGW(TAG, "Received unknown fan mode (fanSpeed1=%u fanSpeed2=%u)", fanSpeed1, fanSpeed2);
+    return fan_modes::FAN_AUTO;
 }
 
 std::string SinclairACCNT::determine_vertical_swing()
