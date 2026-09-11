@@ -140,7 +140,6 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         // uint32_t last_read_;   // Stores the time at which the last read was done
         uint32_t last_packet_sent_;  // Stores the time at which the last packet was sent
         uint32_t last_packet_received_;  // Stores the time at which the last packet was received
-        bool wait_response_;
 
         climate::ClimateTraits traits() override;
 

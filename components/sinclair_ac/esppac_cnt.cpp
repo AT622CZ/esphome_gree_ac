@@ -24,8 +24,6 @@ void SinclairACCNT::loop()
     {
         /* do not forget to order for restart of the recieve state machine */
         this->serialProcess_.state = STATE_RESTART;
-        /* mark that we have recieved a response */
-        this->wait_response_ = false;
         /* log for ESPHome debug */
         log_packet(this->serialProcess_.data);
 
@@ -144,9 +142,12 @@ void SinclairACCNT::send_packet()
 {
     std::vector<uint8_t> packet(protocol::SET_PACKET_LEN, 0);  /* Initialize packet contents */
 
-    if (this->wait_response_ == true && (millis() - this->last_packet_sent_) < protocol::TIME_REFRESH_PERIOD_MS)
+    /* The stock Gree WiFi module transmits on a fixed timer: one packet every
+       TIME_REFRESH_PERIOD_MS, regardless of when the unit report arrived.
+       Sending earlier (previously: right after each received report) makes
+       some units drop the command with 0xAF, see issues #2 and #25. */
+    if ((millis() - this->last_packet_sent_) < protocol::TIME_REFRESH_PERIOD_MS)
     {
-        /* do net send packet too often or when we are waiting for report to come */
         return;
     }
     
@@ -515,7 +516,6 @@ void SinclairACCNT::send_packet()
     packet.insert(packet.begin(), protocol::SYNC);
 
     this->last_packet_sent_ = millis();  /* Save the time when we sent the last packet */
-    this->wait_response_ = true;
     write_array(packet);                 /* Sent the packet by UART */
     log_packet(packet, true);            /* Log uart for debug purposes */
 
