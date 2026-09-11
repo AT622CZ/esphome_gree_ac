@@ -39,6 +39,8 @@ CONF_BEEPER_SWITCH              = "beeper_switch"
 CONF_CURRENT_TEMPERATURE_SENSOR = "current_temperature_sensor"
 
 CONF_FAN_SPEEDS                 = "fan_speeds"        # 5 (Sinclair MV-H09BIF) or 3 (most Gree-based units)
+CONF_QUIET_MODE                 = "quiet_mode"        # False to hide the Quiet fan mode
+CONF_TURBO_MODE                 = "turbo_mode"        # False to hide the Turbo fan mode
 CONF_HORIZONTAL_SWING           = "horizontal_swing"  # False for units without motorized horizontal louvers
 
 HORIZONTAL_SWING_OPTIONS = [
@@ -122,6 +124,8 @@ CONFIG_SCHEMA = cv.All(
             cv.GenerateID(): cv.declare_id(SinclairACCNT),
             cv.Optional(CONF_CURRENT_TEMPERATURE_SENSOR): cv.use_id(sensor.Sensor),
             cv.Optional(CONF_FAN_SPEEDS, default=5): cv.one_of(3, 5, int=True),
+            cv.Optional(CONF_QUIET_MODE, default=True): cv.boolean,
+            cv.Optional(CONF_TURBO_MODE, default=True): cv.boolean,
             cv.Optional(CONF_HORIZONTAL_SWING, default=True): cv.boolean,
         }
     ),
@@ -136,6 +140,8 @@ async def to_code(config):
     await uart.register_uart_device(var, config)
 
     cg.add(var.set_fan_speeds(config[CONF_FAN_SPEEDS]))
+    cg.add(var.set_quiet_mode(config[CONF_QUIET_MODE]))
+    cg.add(var.set_turbo_mode(config[CONF_TURBO_MODE]))
     cg.add(var.set_horizontal_swing(config[CONF_HORIZONTAL_SWING]))
 
     if CONF_HORIZONTAL_SWING_SELECT in config:

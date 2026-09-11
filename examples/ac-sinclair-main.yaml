@@ -37,6 +37,8 @@ climate:
   - platform: sinclair_ac
     name: ${devicename}
     # fan_speeds: 3           # Gree-based units with Low/Medium/High only
+    # quiet_mode: false       # hide Quiet fan mode
+    # turbo_mode: false       # hide Turbo fan mode
     # horizontal_swing: false # units without motorized horizontal louvers (then remove horizontal_swing_select)
     horizontal_swing_select:
       name: ${devicename} Horizontal Swing Mode

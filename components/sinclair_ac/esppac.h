@@ -22,6 +22,18 @@ static const float TEMPERATURE_STEP = 1.0;   // Steps the temperature can be set
 static const float TEMPERATURE_TOLERANCE = 2;  // The tolerance to allow when checking the climate state
 static const uint8_t TEMPERATURE_THRESHOLD = 100;  // Maximum temperature the AC can report (formally 119.5 for sinclair protocol, but 100 is impossible, soo...)
 
+enum class FanMode : uint8_t {
+    AUTO,
+    QUIET,
+    LOW,
+    MEDL,
+    MED,
+    MEDH,
+    HIGH,
+    TURBO,
+};
+
+/* labels for units with 5 fan speeds (fan_speeds: 5, default) */
 namespace fan_modes{
     const char* const FAN_AUTO  = "0 - Auto";
     const char* const FAN_QUIET = "1 - Quiet";
@@ -31,6 +43,16 @@ namespace fan_modes{
     const char* const FAN_MEDH  = "5 - Medium-High";
     const char* const FAN_HIGH  = "6 - High";
     const char* const FAN_TURBO = "7 - Turbo";
+}
+
+/* labels for units with 3 fan speeds (fan_speeds: 3) */
+namespace fan_modes_3{
+    const char* const FAN_AUTO  = "0 - Auto";
+    const char* const FAN_QUIET = "1 - Quiet";
+    const char* const FAN_LOW   = "2 - Low";
+    const char* const FAN_MED   = "3 - Medium";
+    const char* const FAN_HIGH  = "4 - High";
+    const char* const FAN_TURBO = "5 - Turbo";
 }
 
 /* this must be same as HORIZONTAL_SWING_OPTIONS in climate.py */
@@ -109,6 +131,8 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
 
         /* Unit capabilities, see climate.py */
         void set_fan_speeds(uint8_t fan_speeds) { this->fan_speeds_ = fan_speeds; }
+        void set_quiet_mode(bool quiet_mode) { this->quiet_mode_ = quiet_mode; }
+        void set_turbo_mode(bool turbo_mode) { this->turbo_mode_ = turbo_mode; }
         void set_horizontal_swing(bool horizontal_swing) { this->horizontal_swing_ = horizontal_swing; }
 
         void setup() override;
@@ -142,7 +166,13 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         bool beeper_state_ = true; /* Not reported by the unit, kept locally; true = beep */
 
         uint8_t fan_speeds_ = 5;        /* 5: Low/Med-Low/Med/Med-High/High (Sinclair MV-H09BIF), 3: Low/Med/High */
+        bool quiet_mode_ = true;        /* offer the Quiet fan mode */
+        bool turbo_mode_ = true;        /* offer the Turbo fan mode */
         bool horizontal_swing_ = true;  /* false: unit has no motorized horizontal louvers */
+
+        /* Fan mode labels depend on fan_speeds_ (the numeric prefix keeps HA's dropdown ordered) */
+        const char* fan_mode_label(FanMode mode);
+        FanMode fan_mode_from_label(const char* label);
 
         SerialProcess_t serialProcess_;
 

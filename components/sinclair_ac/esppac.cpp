@@ -1,6 +1,9 @@
 // based on: https://github.com/DomiStyle/esphome-panasonic-ac
 #include "esppac.h"
 
+#include <cstring>
+#include <vector>
+
 #include "esphome/core/log.h"
 
 namespace esphome {
@@ -20,17 +23,7 @@ climate::ClimateTraits SinclairAC::traits()
     traits.set_supported_modes({climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_AUTO, climate::CLIMATE_MODE_COOL,
                                 climate::CLIMATE_MODE_HEAT, climate::CLIMATE_MODE_FAN_ONLY, climate::CLIMATE_MODE_DRY});
 
-    if (this->fan_speeds_ == 3)
-    {
-        traits.set_supported_custom_fan_modes({fan_modes::FAN_AUTO, fan_modes::FAN_QUIET, fan_modes::FAN_LOW,
-                                               fan_modes::FAN_MED, fan_modes::FAN_HIGH, fan_modes::FAN_TURBO});
-    }
-    else
-    {
-        traits.set_supported_custom_fan_modes({fan_modes::FAN_AUTO, fan_modes::FAN_QUIET, fan_modes::FAN_LOW,
-                                               fan_modes::FAN_MEDL, fan_modes::FAN_MED, fan_modes::FAN_MEDH,
-                                               fan_modes::FAN_HIGH, fan_modes::FAN_TURBO});
-    }
+    /* custom fan modes are set once on the entity in setup() (ESPHome >= 2026.4) */
 
     if (this->horizontal_swing_)
     {
@@ -45,11 +38,72 @@ climate::ClimateTraits SinclairAC::traits()
     return traits;
 }
 
+const char* SinclairAC::fan_mode_label(FanMode mode)
+{
+    if (this->fan_speeds_ == 3)
+    {
+        switch (mode)
+        {
+            case FanMode::QUIET: return fan_modes_3::FAN_QUIET;
+            case FanMode::LOW:   return fan_modes_3::FAN_LOW;
+            case FanMode::MEDL:  return fan_modes_3::FAN_LOW;   /* not available on 3-speed units */
+            case FanMode::MED:   return fan_modes_3::FAN_MED;
+            case FanMode::MEDH:  return fan_modes_3::FAN_HIGH;  /* not available on 3-speed units */
+            case FanMode::HIGH:  return fan_modes_3::FAN_HIGH;
+            case FanMode::TURBO: return fan_modes_3::FAN_TURBO;
+            case FanMode::AUTO:
+            default:             return fan_modes_3::FAN_AUTO;
+        }
+    }
+    switch (mode)
+    {
+        case FanMode::QUIET: return fan_modes::FAN_QUIET;
+        case FanMode::LOW:   return fan_modes::FAN_LOW;
+        case FanMode::MEDL:  return fan_modes::FAN_MEDL;
+        case FanMode::MED:   return fan_modes::FAN_MED;
+        case FanMode::MEDH:  return fan_modes::FAN_MEDH;
+        case FanMode::HIGH:  return fan_modes::FAN_HIGH;
+        case FanMode::TURBO: return fan_modes::FAN_TURBO;
+        case FanMode::AUTO:
+        default:             return fan_modes::FAN_AUTO;
+    }
+}
+
+FanMode SinclairAC::fan_mode_from_label(const char* label)
+{
+    static const FanMode all[] = {FanMode::AUTO, FanMode::QUIET, FanMode::LOW, FanMode::MEDL,
+                                  FanMode::MED,  FanMode::MEDH,  FanMode::HIGH, FanMode::TURBO};
+    for (FanMode mode : all)
+    {
+        if (strcmp(label, this->fan_mode_label(mode)) == 0)
+            return mode;
+    }
+    ESP_LOGW(TAG, "Unknown fan mode '%s', using Auto", label);
+    return FanMode::AUTO;
+}
+
 void SinclairAC::setup()
 {
   // Initialize times
     this->init_time_ = millis();
     this->last_packet_sent_ = millis();
+
+    /* Custom fan modes depend on the unit capabilities; the numeric prefix in the
+       labels keeps the dropdown in HA ordered. */
+    std::vector<const char *> fan_modes_supported;
+    fan_modes_supported.push_back(this->fan_mode_label(FanMode::AUTO));
+    if (this->quiet_mode_)
+        fan_modes_supported.push_back(this->fan_mode_label(FanMode::QUIET));
+    fan_modes_supported.push_back(this->fan_mode_label(FanMode::LOW));
+    if (this->fan_speeds_ == 5)
+        fan_modes_supported.push_back(this->fan_mode_label(FanMode::MEDL));
+    fan_modes_supported.push_back(this->fan_mode_label(FanMode::MED));
+    if (this->fan_speeds_ == 5)
+        fan_modes_supported.push_back(this->fan_mode_label(FanMode::MEDH));
+    fan_modes_supported.push_back(this->fan_mode_label(FanMode::HIGH));
+    if (this->turbo_mode_)
+        fan_modes_supported.push_back(this->fan_mode_label(FanMode::TURBO));
+    this->set_supported_custom_fan_modes(fan_modes_supported);
 
     /* The beeper flag is write-only, so restore its state from the switch's restore mode */
     if (this->beeper_switch_ != nullptr)
