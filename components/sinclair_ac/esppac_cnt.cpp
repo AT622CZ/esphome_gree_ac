@@ -447,7 +447,7 @@ void SinclairACCNT::send_packet()
     /* BEEPER --------------------------------------------------------------------------- */
     if (!this->beeper_state_)
     {
-        packet[protocol::SET_NO_BEEP_BYTE] |= protocol::SET_NO_BEEP_MASK;
+        packet[this->beeper_byte_] |= this->beeper_mask_;
     }
 
     /* SLEEP --------------------------------------------------------------------------- */
@@ -610,8 +610,18 @@ bool SinclairACCNT::processUnitReport()
     /* if there is no external sensor mapped to represent current temperature we will get data from AC unit */
     if (this->current_temperature_sensor_ == nullptr)
     {
-        float newCurrentTemperature = (float)(((this->serialProcess_.data[protocol::REPORT_TEMP_ACT_BYTE] & protocol::REPORT_TEMP_ACT_MASK) >> protocol::REPORT_TEMP_ACT_POS)
-            - protocol::REPORT_TEMP_ACT_OFF) / protocol::REPORT_TEMP_ACT_DIV;
+        uint8_t rawCurrentTemperature = (this->serialProcess_.data[protocol::REPORT_TEMP_ACT_BYTE] & protocol::REPORT_TEMP_ACT_MASK) >> protocol::REPORT_TEMP_ACT_POS;
+        float newCurrentTemperature;
+        if (this->current_temperature_gree_)
+        {
+            /* Gree-based units (Coolexpert ACH-09BI, sniffed stock module: 0x36 -> 14 C, 0x38 -> 16 C) */
+            newCurrentTemperature = (float) rawCurrentTemperature - protocol::REPORT_TEMP_ACT_OFF_GREE;
+        }
+        else
+        {
+            /* Sinclair MV-H09BIF */
+            newCurrentTemperature = ((float) rawCurrentTemperature - protocol::REPORT_TEMP_ACT_OFF) / protocol::REPORT_TEMP_ACT_DIV;
+        }
         if (this->current_temperature != newCurrentTemperature) hasChanged = true;
         this->update_current_temperature(newCurrentTemperature);
     }

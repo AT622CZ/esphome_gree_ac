@@ -41,6 +41,8 @@ On some stock WiFi PCBs AC unit connector pins are marked on silkscreen.
 **UNIT CAPABILITIES**
 * `fan_speeds: 5` (default, Sinclair MV-H09BIF: Low/Medium-Low/Medium/Medium-High/High) or `fan_speeds: 3` (most Gree-based units with Low/Medium/High, e.g. Coolexpert ACH-09BI). With 3 speeds the fan speed is carried only in the mode byte and the fine speed field is not sent.
 * `quiet_mode: false` / `turbo_mode: false` hide the Quiet / Turbo fan modes (separate flags in the protocol, independent of the speed) if the unit does not have them.
+* `current_temperature_formula: gree` if the room temperature shown in HA is off. Sinclair MV-H09BIF encodes it as `(raw - 16) / 2` (default `sinclair`), Gree-based units such as Coolexpert ACH-09BI as `raw - 40` (`gree`). Compare HA with a thermometer to pick the right one; both formulas agree at 24 °C.
+* `beeper_byte` / `beeper_mask` (experimental, default 40 / 0x01): where the "execute silently" flag is placed in the SET packet. Units that keep beeping with `beeper_switch` off ignore the default flag; these let you try other bits without touching the code.
 * `horizontal_swing: false` for units without motorized horizontal louvers - the climate entity then offers only Off/Vertical swing and `horizontal_swing_select` is not allowed.
 
 **OPTIONAL ENTITIES**

@@ -42,6 +42,9 @@ CONF_FAN_SPEEDS                 = "fan_speeds"        # 5 (Sinclair MV-H09BIF) o
 CONF_QUIET_MODE                 = "quiet_mode"        # False to hide the Quiet fan mode
 CONF_TURBO_MODE                 = "turbo_mode"        # False to hide the Turbo fan mode
 CONF_HORIZONTAL_SWING           = "horizontal_swing"  # False for units without motorized horizontal louvers
+CONF_CURRENT_TEMPERATURE_FORMULA = "current_temperature_formula"  # sinclair: (raw-16)/2, gree: raw-40
+CONF_BEEPER_BYTE                = "beeper_byte"       # experimental: data byte carrying the silent flag
+CONF_BEEPER_MASK                = "beeper_mask"       # experimental: bit mask of the silent flag
 
 HORIZONTAL_SWING_OPTIONS = [
     "0 - OFF",
@@ -127,6 +130,11 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_QUIET_MODE, default=True): cv.boolean,
             cv.Optional(CONF_TURBO_MODE, default=True): cv.boolean,
             cv.Optional(CONF_HORIZONTAL_SWING, default=True): cv.boolean,
+            cv.Optional(CONF_CURRENT_TEMPERATURE_FORMULA, default="sinclair"): cv.one_of(
+                "sinclair", "gree", lower=True
+            ),
+            cv.Optional(CONF_BEEPER_BYTE, default=40): cv.int_range(min=0, max=44),
+            cv.Optional(CONF_BEEPER_MASK, default=0x01): cv.int_range(min=1, max=255),
         }
     ),
     _validate_capabilities,
@@ -143,6 +151,8 @@ async def to_code(config):
     cg.add(var.set_quiet_mode(config[CONF_QUIET_MODE]))
     cg.add(var.set_turbo_mode(config[CONF_TURBO_MODE]))
     cg.add(var.set_horizontal_swing(config[CONF_HORIZONTAL_SWING]))
+    cg.add(var.set_current_temperature_gree(config[CONF_CURRENT_TEMPERATURE_FORMULA] == "gree"))
+    cg.add(var.set_beeper_flag(config[CONF_BEEPER_BYTE], config[CONF_BEEPER_MASK]))
 
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf = config[CONF_HORIZONTAL_SWING_SELECT]

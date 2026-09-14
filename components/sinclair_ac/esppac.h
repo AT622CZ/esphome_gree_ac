@@ -134,6 +134,8 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         void set_quiet_mode(bool quiet_mode) { this->quiet_mode_ = quiet_mode; }
         void set_turbo_mode(bool turbo_mode) { this->turbo_mode_ = turbo_mode; }
         void set_horizontal_swing(bool horizontal_swing) { this->horizontal_swing_ = horizontal_swing; }
+        void set_current_temperature_gree(bool gree) { this->current_temperature_gree_ = gree; }
+        void set_beeper_flag(uint8_t byte, uint8_t mask) { this->beeper_byte_ = byte; this->beeper_mask_ = mask; }
 
         void setup() override;
         void loop() override;
@@ -169,6 +171,9 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         bool quiet_mode_ = true;        /* offer the Quiet fan mode */
         bool turbo_mode_ = true;        /* offer the Turbo fan mode */
         bool horizontal_swing_ = true;  /* false: unit has no motorized horizontal louvers */
+        bool current_temperature_gree_ = false; /* true: room temperature = raw - 40 (Gree-based units), false: (raw - 16) / 2 (Sinclair) */
+        uint8_t beeper_byte_ = 40;      /* experimental: SET data byte / mask carrying the "no beep" flag */
+        uint8_t beeper_mask_ = 0x01;
 
         /* Fan mode labels depend on fan_speeds_ (the numeric prefix keeps HA's dropdown ordered) */
         const char* fan_mode_label(FanMode mode);

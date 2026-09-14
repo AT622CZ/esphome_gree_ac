@@ -65,6 +65,7 @@ namespace protocol {
     static const uint8_t REPORT_TEMP_ACT_POS   = 0;
     static const uint8_t REPORT_TEMP_ACT_OFF   = 16;  /* temperature offset from value in packet */
     static const float   REPORT_TEMP_ACT_DIV   = 2.0; /* temperature divider from value in packet */
+    static const uint8_t REPORT_TEMP_ACT_OFF_GREE = 40; /* Gree-based units: temperature = raw - 40 (current_temperature_formula: gree) */
 
     static const uint8_t REPORT_HSWING_BYTE    = 8;
     static const uint8_t REPORT_HSWING_MASK    = 0b00000111;
@@ -124,7 +125,8 @@ namespace protocol {
     static const uint8_t SET_PACKET_LEN        = 45;
 
     /* SET only: when set, the unit executes the command without beeping
-       (same flag the Gree+ app uses for its "quiet" option); not reported back */
+       (flag found in the stock module firmware by gekkehenkie11); not reported back.
+       Defaults for beeper_byte / beeper_mask in climate.py; some units ignore it. */
     static const uint8_t SET_NO_BEEP_BYTE      = 40;
     static const uint8_t SET_NO_BEEP_MASK      = 0b00000001;
     
