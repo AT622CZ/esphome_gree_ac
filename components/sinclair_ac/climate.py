@@ -43,6 +43,10 @@ CONF_QUIET_MODE                 = "quiet_mode"        # False to hide the Quiet 
 CONF_TURBO_MODE                 = "turbo_mode"        # False to hide the Turbo fan mode
 CONF_HORIZONTAL_SWING           = "horizontal_swing"  # False for units without motorized horizontal louvers
 CONF_CURRENT_TEMPERATURE_FORMULA = "current_temperature_formula"  # sinclair: (raw-16)/2, gree: raw-40
+CONF_DISPLAY_MODES              = "display_modes"     # subset of display modes offered in display_select
+
+# keys for CONF_DISPLAY_MODES, same order as DISPLAY_OPTIONS; bit i of the mask passed to C++
+DISPLAY_MODE_KEYS = ["off", "auto", "set_temperature", "actual_temperature", "outside_temperature"]
 CONF_BEEPER_BYTE                = "beeper_byte"       # experimental: data byte carrying the silent flag
 CONF_BEEPER_MASK                = "beeper_mask"       # experimental: bit mask of the silent flag
 
@@ -118,6 +122,8 @@ def _validate_capabilities(config):
         raise cv.Invalid(
             f"{CONF_HORIZONTAL_SWING_SELECT} cannot be used with {CONF_HORIZONTAL_SWING}: false"
         )
+    if not config[CONF_DISPLAY_MODES]:
+        raise cv.Invalid(f"{CONF_DISPLAY_MODES} must contain at least one mode")
     return config
 
 
@@ -132,6 +138,9 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_HORIZONTAL_SWING, default=True): cv.boolean,
             cv.Optional(CONF_CURRENT_TEMPERATURE_FORMULA, default="sinclair"): cv.one_of(
                 "sinclair", "gree", lower=True
+            ),
+            cv.Optional(CONF_DISPLAY_MODES, default=DISPLAY_MODE_KEYS): cv.ensure_list(
+                cv.one_of(*DISPLAY_MODE_KEYS, lower=True)
             ),
             cv.Optional(CONF_BEEPER_BYTE, default=40): cv.int_range(min=0, max=44),
             cv.Optional(CONF_BEEPER_MASK, default=0x01): cv.int_range(min=1, max=255),
@@ -153,6 +162,11 @@ async def to_code(config):
     cg.add(var.set_horizontal_swing(config[CONF_HORIZONTAL_SWING]))
     cg.add(var.set_current_temperature_gree(config[CONF_CURRENT_TEMPERATURE_FORMULA] == "gree"))
     cg.add(var.set_beeper_flag(config[CONF_BEEPER_BYTE], config[CONF_BEEPER_MASK]))
+    display_mask = 0
+    for i, key in enumerate(DISPLAY_MODE_KEYS):
+        if key in config[CONF_DISPLAY_MODES]:
+            display_mask |= 1 << i
+    cg.add(var.set_display_modes(display_mask))
 
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf = config[CONF_HORIZONTAL_SWING_SELECT]
@@ -168,7 +182,11 @@ async def to_code(config):
     
     if CONF_DISPLAY_SELECT in config:
         conf = config[CONF_DISPLAY_SELECT]
-        display_select = await select.new_select(conf, options=DISPLAY_OPTIONS)
+        enabled = config[CONF_DISPLAY_MODES]
+        display_options = [
+            label for key, label in zip(DISPLAY_MODE_KEYS, DISPLAY_OPTIONS) if key in enabled
+        ]
+        display_select = await select.new_select(conf, options=display_options)
         await cg.register_component(display_select, conf)
         cg.add(var.set_display_select(display_select))
     

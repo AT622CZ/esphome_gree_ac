@@ -229,11 +229,43 @@ void SinclairAC::update_swing_vertical(const std::string &swing)
     }
 }
 
+const std::string &SinclairAC::display_mode_offered(const std::string &display)
+{
+    /* index in display_options order: OFF, AUTO, SET, ACT, OUT */
+    static const std::string *const modes[] = {&display_options::OFF, &display_options::AUTO, &display_options::SET,
+                                               &display_options::ACT, &display_options::OUT};
+    /* preferred fallbacks per mode: "no indication" (AUTO) and the set temperature look the same,
+       the temporary room/outside readouts return to the set temperature on their own */
+    static const uint8_t fallback[5][4] = {
+        {0, 1, 2, 3}, /* OFF */
+        {1, 2, 0, 3}, /* AUTO */
+        {2, 1, 0, 3}, /* SET */
+        {3, 1, 2, 0}, /* ACT */
+        {4, 1, 2, 0}, /* OUT */
+    };
+
+    uint8_t idx = 1;
+    for (uint8_t i = 0; i < 5; i++)
+    {
+        if (display == *modes[i])
+        {
+            idx = i;
+            break;
+        }
+    }
+    for (uint8_t candidate : fallback[idx])
+    {
+        if (this->display_modes_ & (1 << candidate))
+            return *modes[candidate];
+    }
+    return display;
+}
+
 void SinclairAC::update_display(const std::string &display)
 {
-    this->display_state_ = display;
+    this->display_state_ = this->display_mode_offered(display);
 
-    if (this->display_select_ != nullptr && 
+    if (this->display_select_ != nullptr &&
         this->display_select_->current_option().str() != this->display_state_)
     {
         this->display_select_->publish_state(this->display_state_);
