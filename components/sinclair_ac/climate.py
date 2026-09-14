@@ -46,7 +46,7 @@ CONF_CURRENT_TEMPERATURE_FORMULA = "current_temperature_formula"  # sinclair: (r
 CONF_DISPLAY_MODES              = "display_modes"     # subset of display modes offered in display_select
 
 # keys for CONF_DISPLAY_MODES, same order as DISPLAY_OPTIONS; bit i of the mask passed to C++
-DISPLAY_MODE_KEYS = ["off", "auto", "set_temperature", "actual_temperature", "outside_temperature"]
+DISPLAY_MODE_KEYS = ["display_off", "auto", "set_temperature", "actual_temperature", "outside_temperature"]
 CONF_BEEPER_BYTE                = "beeper_byte"       # experimental: data byte carrying the silent flag
 CONF_BEEPER_MASK                = "beeper_mask"       # experimental: bit mask of the silent flag
 
@@ -139,6 +139,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_CURRENT_TEMPERATURE_FORMULA, default="sinclair"): cv.one_of(
                 "sinclair", "gree", lower=True
             ),
+            # "off" would be parsed by YAML as boolean false, hence the key is display_off
             cv.Optional(CONF_DISPLAY_MODES, default=DISPLAY_MODE_KEYS): cv.ensure_list(
                 cv.one_of(*DISPLAY_MODE_KEYS, lower=True)
             ),
