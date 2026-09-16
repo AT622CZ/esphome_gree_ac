@@ -50,10 +50,10 @@ void SinclairACCNT::loop()
         }
     }
 
-    /* periodic I FEEL refresh, the IR remote does the same every 10 minutes */
+    /* periodic I FEEL refresh (i_feel_interval), the IR remote does the same every 10 minutes */
     if (this->i_feel_sensor_ != nullptr && !std::isnan(this->i_feel_temperature_) &&
         this->state_ == ACState::Ready && this->update_ == ACUpdate::NoUpdate &&
-        (this->i_feel_pending_ || (millis() - this->i_feel_last_sent_) >= protocol::I_FEEL_REFRESH_MS))
+        (this->i_feel_pending_ || (millis() - this->i_feel_last_sent_) >= this->i_feel_interval_ms_))
     {
         this->request_i_feel_update();
     }
