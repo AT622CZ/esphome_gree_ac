@@ -346,21 +346,6 @@ climate::ClimateAction SinclairAC::determine_action()
  * Sensor handling
  */
 
-void SinclairAC::set_i_feel_sensor(sensor::Sensor *i_feel_sensor)
-{
-    this->i_feel_sensor_ = i_feel_sensor;
-    this->i_feel_sensor_->add_on_state_callback([this](float state)
-        {
-            if (std::isnan(state))
-                return;
-            uint8_t rounded = (uint8_t) (state < 0.0f ? 0.0f : (state > 60.0f ? 60.0f : state + 0.5f));
-            bool changed = std::isnan(this->i_feel_temperature_) ||
-                           rounded != (uint8_t) (this->i_feel_temperature_ + 0.5f);
-            this->i_feel_temperature_ = state;
-            if (changed)
-                this->on_i_feel_change();
-        });
-}
 
 void SinclairAC::set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor)
 {

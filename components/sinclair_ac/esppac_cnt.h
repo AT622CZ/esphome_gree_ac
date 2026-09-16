@@ -103,7 +103,8 @@ namespace protocol {
     /* I FEEL (seen in reports of a Coolexpert ACH-09BI while toggling I FEEL on the remote):
        byte 9 bit6 = I FEEL active, byte 24 = temperature measured by the remote in C,
        byte 42 then follows the remote's value instead of the unit's own sensor.
-       SET shares the layout, so the same bytes are used to send an external temperature. */
+       Tested: setting the flag and a temperature in SET packets (with and without 0xAF) is
+       ignored by the unit, I FEEL only works from the IR remote. */
     static const uint8_t REPORT_IFEEL_BYTE     = 9;
     static const uint8_t REPORT_IFEEL_MASK     = 0b01000000;
     static const uint8_t REPORT_IFEEL_TEMP_BYTE = 24;
@@ -177,7 +178,6 @@ class SinclairACCNT : public SinclairAC {
         void on_sleep_change(bool sleep) override;
         void on_xfan_change(bool xfan) override;
         void on_save_change(bool save) override;
-        void on_i_feel_change() override;
 
         void setup() override;
         void loop() override;
@@ -189,10 +189,7 @@ class SinclairACCNT : public SinclairAC {
         bool ifeel_reported_ = false;           /* diagnostics: last I FEEL state / temperature / remote flag seen in reports */
         uint8_t ifeel_temp_reported_ = 0;
         bool remote_cmd_reported_ = false;
-        uint32_t i_feel_last_sent_ = 0;         /* millis() of the last I FEEL update packet (resent every i_feel_interval, the remote does 10 min) */
-        bool i_feel_pending_ = false;           /* an I FEEL update is due as soon as the unit is ready and no other update is in flight */
 
-        void request_i_feel_update();
 
         climate::ClimateMode mode_internal_;
         bool power_internal_;

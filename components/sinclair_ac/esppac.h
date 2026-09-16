@@ -130,9 +130,6 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         void set_beeper_switch(switch_::Switch *beeper_switch);
 
         void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
-        void set_i_feel_sensor(sensor::Sensor *i_feel_sensor);
-        void set_i_feel_command(bool command) { this->i_feel_command_ = command; }
-        void set_i_feel_interval(uint32_t interval_ms) { this->i_feel_interval_ms_ = interval_ms; }
 
         /* Unit capabilities, see climate.py */
         void set_fan_speeds(uint8_t fan_speeds) { this->fan_speeds_ = fan_speeds; }
@@ -160,10 +157,6 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         switch_::Switch *beeper_switch_          = nullptr; /* Switch for beeper (ON = unit beeps on commands) */
 
         sensor::Sensor *current_temperature_sensor_ = nullptr; /* If user wants to replace reported temperature by an external sensor readout */
-        sensor::Sensor *i_feel_sensor_ = nullptr;   /* experimental: temperature sent to the unit as I FEEL (like the remote does over IR) */
-        float i_feel_temperature_ = NAN;            /* last value of i_feel_sensor_ */
-        bool i_feel_command_ = false;               /* true: send I FEEL updates as a full command (0xAF), false: as a plain update packet */
-        uint32_t i_feel_interval_ms_ = 5UL * 60UL * 1000UL; /* resend period of the I FEEL temperature */
 
         std::string vertical_swing_state_;
         std::string horizontal_swing_state_;
@@ -228,7 +221,6 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         virtual void on_sleep_change(bool sleep) = 0;
         virtual void on_xfan_change(bool xfan) = 0;
         virtual void on_save_change(bool save) = 0;
-        virtual void on_i_feel_change() = 0;    /* I FEEL temperature changed by >= 1 C (or first value) */
         virtual void on_beeper_change(bool beeper) = 0;
 
         climate::ClimateAction determine_action();

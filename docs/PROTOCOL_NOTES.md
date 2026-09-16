@@ -36,3 +36,11 @@ Differences to the component's handshake:
   data byte 43 = 0x80. Meaning unknown; candidates for the "silent" flag on units that
   ignore data byte 40 bit0.
 * Packets are spaced 300 ms apart regardless of the unit's reports.
+
+Tested on the Coolexpert ACH-09BI (2026-09-16):
+
+* SET packets carrying the I FEEL flag (byte 9 bit6) and a temperature (byte 24) are
+  ignored, both as a plain update packet and as a 0xAF command. I FEEL cannot be driven
+  over UART, only from the IR remote.
+* A SET packet without the "no change" flag but without 0xAF is ignored as well; the unit
+  applies packet contents only when 0xAF is present.

@@ -50,13 +50,6 @@ void SinclairACCNT::loop()
         }
     }
 
-    /* periodic I FEEL refresh (i_feel_interval), the IR remote does the same every 10 minutes */
-    if (this->i_feel_sensor_ != nullptr && !std::isnan(this->i_feel_temperature_) &&
-        this->state_ == ACState::Ready && this->update_ == ACUpdate::NoUpdate &&
-        (this->i_feel_pending_ || (millis() - this->i_feel_last_sent_) >= this->i_feel_interval_ms_))
-    {
-        this->request_i_feel_update();
-    }
 
     /* we will send a packet to the AC as a reponse to indicate changes */
     send_packet();
@@ -454,15 +447,6 @@ void SinclairACCNT::send_packet()
         packet[protocol::REPORT_PLASMA2_BYTE] |= protocol::REPORT_PLASMA2_MASK;
     }
 
-    /* I FEEL (experimental) ------------------------------------------------------------- */
-    if (this->i_feel_sensor_ != nullptr && !std::isnan(this->i_feel_temperature_))
-    {
-        float t = this->i_feel_temperature_;
-        if (t < 0.0f) t = 0.0f;
-        if (t > 60.0f) t = 60.0f;
-        packet[protocol::REPORT_IFEEL_BYTE] |= protocol::REPORT_IFEEL_MASK;
-        packet[protocol::REPORT_IFEEL_TEMP_BYTE] = (uint8_t) (t + 0.5f);
-    }
 
     /* BEEPER --------------------------------------------------------------------------- */
     if (!this->beeper_state_)
@@ -585,7 +569,7 @@ void SinclairACCNT::handle_packet()
         /* now process the data */
         bool changed = this->processUnitReport();
 
-        /* diagnostics for the experimental I FEEL support: log when the unit's view changes */
+        /* diagnostics: I FEEL state and temperature received from the IR remote, and IR command flag */
         bool ifeel = (this->serialProcess_.data[protocol::REPORT_IFEEL_BYTE] & protocol::REPORT_IFEEL_MASK) != 0;
         uint8_t ifeelTemp = this->serialProcess_.data[protocol::REPORT_IFEEL_TEMP_BYTE];
         bool remoteCmd = (this->serialProcess_.data[protocol::REPORT_REMOTE_CMD_BYTE] & protocol::REPORT_REMOTE_CMD_MASK) != 0;
@@ -1003,37 +987,7 @@ void SinclairACCNT::on_xfan_change(bool xfan)
     this->xfan_state_ = xfan;
 }
 
-void SinclairACCNT::request_i_feel_update()
-{
-    /* not talking to the unit yet, or a change from HA is in flight (it carries I FEEL anyway):
-       send it from loop() as soon as possible */
-    if (this->state_ != ACState::Ready || this->update_ != ACUpdate::NoUpdate)
-    {
-        this->i_feel_pending_ = true;
-        return;
-    }
 
-    this->i_feel_pending_ = false;
-    this->i_feel_last_sent_ = millis();
-
-    ESP_LOGD(TAG, "Sending I FEEL temperature %.0f C (%s)", this->i_feel_temperature_,
-             this->i_feel_command_ ? "command with 0xAF" : "plain update packet");
-
-    if (this->i_feel_command_)
-    {
-        this->update_ = ACUpdate::UpdateStart;
-    }
-    else
-    {
-        /* one packet without the "no change" flag and without 0xAF */
-        this->update_ = ACUpdate::UpdateClear;
-    }
-}
-
-void SinclairACCNT::on_i_feel_change()
-{
-    this->request_i_feel_update();
-}
 
 void SinclairACCNT::on_save_change(bool save)
 {
