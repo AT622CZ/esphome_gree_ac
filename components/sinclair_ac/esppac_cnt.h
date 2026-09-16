@@ -157,6 +157,7 @@ namespace protocol {
     /* time constraints */
     static const unsigned long TIME_REFRESH_PERIOD_MS   =  300;
     static const unsigned long TIME_TIMEOUT_INACTIVE_MS = 1000;
+    static const unsigned long I_FEEL_REFRESH_MS        = 10UL * 60UL * 1000UL; /* the IR remote resends its temperature every 10 min */
 }
 
 /* Define packets from AC that would be processed by software */
@@ -177,6 +178,7 @@ class SinclairACCNT : public SinclairAC {
         void on_sleep_change(bool sleep) override;
         void on_xfan_change(bool xfan) override;
         void on_save_change(bool save) override;
+        void on_i_feel_change() override;
 
         void setup() override;
         void loop() override;
@@ -188,6 +190,10 @@ class SinclairACCNT : public SinclairAC {
         bool ifeel_reported_ = false;           /* diagnostics: last I FEEL state / temperature / remote flag seen in reports */
         uint8_t ifeel_temp_reported_ = 0;
         bool remote_cmd_reported_ = false;
+        uint32_t i_feel_last_sent_ = 0;         /* millis() of the last I FEEL update packet (refreshed every I_FEEL_REFRESH_MS like the remote) */
+        bool i_feel_pending_ = false;           /* an I FEEL update is due as soon as the unit is ready and no other update is in flight */
+
+        void request_i_feel_update();
 
         climate::ClimateMode mode_internal_;
         bool power_internal_;

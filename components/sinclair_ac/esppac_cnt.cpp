@@ -50,6 +50,14 @@ void SinclairACCNT::loop()
         }
     }
 
+    /* periodic I FEEL refresh, the IR remote does the same every 10 minutes */
+    if (this->i_feel_sensor_ != nullptr && !std::isnan(this->i_feel_temperature_) &&
+        this->state_ == ACState::Ready && this->update_ == ACUpdate::NoUpdate &&
+        (this->i_feel_pending_ || (millis() - this->i_feel_last_sent_) >= protocol::I_FEEL_REFRESH_MS))
+    {
+        this->request_i_feel_update();
+    }
+
     /* we will send a packet to the AC as a reponse to indicate changes */
     send_packet();
 
@@ -993,6 +1001,38 @@ void SinclairACCNT::on_xfan_change(bool xfan)
 
     this->update_ = ACUpdate::UpdateStart;
     this->xfan_state_ = xfan;
+}
+
+void SinclairACCNT::request_i_feel_update()
+{
+    /* not talking to the unit yet, or a change from HA is in flight (it carries I FEEL anyway):
+       send it from loop() as soon as possible */
+    if (this->state_ != ACState::Ready || this->update_ != ACUpdate::NoUpdate)
+    {
+        this->i_feel_pending_ = true;
+        return;
+    }
+
+    this->i_feel_pending_ = false;
+    this->i_feel_last_sent_ = millis();
+
+    ESP_LOGD(TAG, "Sending I FEEL temperature %.0f C (%s)", this->i_feel_temperature_,
+             this->i_feel_command_ ? "command with 0xAF" : "plain update packet");
+
+    if (this->i_feel_command_)
+    {
+        this->update_ = ACUpdate::UpdateStart;
+    }
+    else
+    {
+        /* one packet without the "no change" flag and without 0xAF */
+        this->update_ = ACUpdate::UpdateClear;
+    }
+}
+
+void SinclairACCNT::on_i_feel_change()
+{
+    this->request_i_feel_update();
 }
 
 void SinclairACCNT::on_save_change(bool save)
