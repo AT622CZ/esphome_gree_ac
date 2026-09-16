@@ -6,7 +6,7 @@ This generally replaces stock WiFi module, sometimes giving a little more advanc
 
 Work is still in progress!
 
-Tested with Sinclair AC (MV-H09BIF), AYRTON AYL-12BIR and Coolexpert ACH-09BI.
+Tested with Sinclair AC (MV-H09BIF), AYRTON AYL-12BIR and Coolexpert ACH-09BI (both 3-speed Gree-based units; the beeper flag works on the AYRTON, the Coolexpert ignores it).
 
 Communication protocol is based on my own reverse-engineering.
 
@@ -109,7 +109,7 @@ Optional entities:
 | `sleep_switch` | switch | Sleep function (SLEEP button); the unit clears it when powered off |
 | `xfan_switch` | switch | X-fan: after power off the indoor fan keeps running for a few minutes to dry the coil (hold FAN on the remote) |
 | `save_switch` | switch | one protocol flag with two meanings: Energy saving in Cool mode, 8 °C frost-protection heating in Heat mode |
-| `beeper_switch` | switch | ON (default) = unit beeps on every command from HA, OFF = commands are executed silently (IR remote still beeps). Not reported back by the unit, the switch keeps its own state (`restore_mode`, default `RESTORE_DEFAULT_ON`). Works only on units that honour the flag. |
+| `beeper_switch` | switch | ON (default) = unit beeps on every command from HA, OFF = commands are executed silently (IR remote still beeps). Not reported back by the unit, the switch keeps its own state (`restore_mode`, default `RESTORE_DEFAULT_ON`). Works only on units that honour the flag (AYRTON AYL-12BIR yes, Coolexpert ACH-09BI no). |
 
 **NOTES**
 * Packets are sent on a fixed 300 ms timer like the stock WiFi module. Sending right after each unit report (previous behaviour) made some units ignore commands, see [#2](https://github.com/piotrva/esphome_gree_ac/issues/2) and [#25](https://github.com/piotrva/esphome_gree_ac/issues/25).
