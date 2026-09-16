@@ -23,6 +23,9 @@ Confirmed against the component's byte map:
 | quiet | 16 bit3 | app sends it together with fan low even on units whose remote has no Quiet |
 | fan fine speed | 18 low nibble | app sends 1/2 or 3/5 for low/med/high, 3-speed units ignore it |
 | room temperature (report) | 42 | Gree-based: `raw - 40` (0x36 = 14 C, 0x38 = 16 C); Sinclair: `(raw - 16) / 2` |
+| I FEEL active (report) | 9 bit6 | set while I FEEL is on; cleared by I FEEL off or power off |
+| I FEEL temperature (report) | 24 | whole °C measured by the remote (0x17 = 23 C); byte 42 then follows this value instead of the unit's own sensor |
+| remote command received (report) | 37 bit7 | set for ~6 s after the unit accepted an IR command |
 
 Differences to the component's handshake:
 

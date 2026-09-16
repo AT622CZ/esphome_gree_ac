@@ -346,6 +346,15 @@ climate::ClimateAction SinclairAC::determine_action()
  * Sensor handling
  */
 
+void SinclairAC::set_i_feel_sensor(sensor::Sensor *i_feel_sensor)
+{
+    this->i_feel_sensor_ = i_feel_sensor;
+    this->i_feel_sensor_->add_on_state_callback([this](float state)
+        {
+            this->i_feel_temperature_ = state;
+        });
+}
+
 void SinclairAC::set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor)
 {
     this->current_temperature_sensor_ = current_temperature_sensor;

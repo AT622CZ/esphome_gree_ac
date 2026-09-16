@@ -1,6 +1,8 @@
 // based on: https://github.com/DomiStyle/esphome-panasonic-ac
 #include "esppac_cnt.h"
 
+#include <cmath>
+
 namespace esphome {
 namespace sinclair_ac {
 namespace CNT {
@@ -444,6 +446,16 @@ void SinclairACCNT::send_packet()
         packet[protocol::REPORT_PLASMA2_BYTE] |= protocol::REPORT_PLASMA2_MASK;
     }
 
+    /* I FEEL (experimental) ------------------------------------------------------------- */
+    if (this->i_feel_sensor_ != nullptr && !std::isnan(this->i_feel_temperature_))
+    {
+        float t = this->i_feel_temperature_;
+        if (t < 0.0f) t = 0.0f;
+        if (t > 60.0f) t = 60.0f;
+        packet[protocol::REPORT_IFEEL_BYTE] |= protocol::REPORT_IFEEL_MASK;
+        packet[protocol::REPORT_IFEEL_TEMP_BYTE] = (uint8_t) (t + 0.5f);
+    }
+
     /* BEEPER --------------------------------------------------------------------------- */
     if (!this->beeper_state_)
     {
@@ -564,6 +576,23 @@ void SinclairACCNT::handle_packet()
         this->serialProcess_.data.pop_back();  /* remove checksum */
         /* now process the data */
         bool changed = this->processUnitReport();
+
+        /* diagnostics for the experimental I FEEL support: log when the unit's view changes */
+        bool ifeel = (this->serialProcess_.data[protocol::REPORT_IFEEL_BYTE] & protocol::REPORT_IFEEL_MASK) != 0;
+        uint8_t ifeelTemp = this->serialProcess_.data[protocol::REPORT_IFEEL_TEMP_BYTE];
+        bool remoteCmd = (this->serialProcess_.data[protocol::REPORT_REMOTE_CMD_BYTE] & protocol::REPORT_REMOTE_CMD_MASK) != 0;
+        if (ifeel != this->ifeel_reported_ || ifeelTemp != this->ifeel_temp_reported_)
+        {
+            ESP_LOGD(TAG, "Unit reports I FEEL %s, I FEEL temperature %u C", ifeel ? "active" : "inactive", ifeelTemp);
+            this->ifeel_reported_ = ifeel;
+            this->ifeel_temp_reported_ = ifeelTemp;
+        }
+        if (remoteCmd != this->remote_cmd_reported_)
+        {
+            if (remoteCmd)
+                ESP_LOGD(TAG, "Unit received a command from the IR remote");
+            this->remote_cmd_reported_ = remoteCmd;
+        }
         /* Reports arrive every ~300 ms; publishing each one floods Home Assistant
            and makes a value just changed in HA flip back before the unit confirms it.
            Publish only when something changed, or once after a request from HA so

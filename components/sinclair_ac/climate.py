@@ -37,6 +37,7 @@ CONF_SAVE_SWITCH                = "save_switch"
 CONF_BEEPER_SWITCH              = "beeper_switch"
 
 CONF_CURRENT_TEMPERATURE_SENSOR = "current_temperature_sensor"
+CONF_I_FEEL_SENSOR              = "i_feel_sensor"     # experimental: send this sensor to the unit as I FEEL temperature
 
 CONF_FAN_SPEEDS                 = "fan_speeds"        # 5 (Sinclair MV-H09BIF) or 3 (most Gree-based units)
 CONF_QUIET_MODE                 = "quiet_mode"        # False to hide the Quiet fan mode
@@ -132,6 +133,7 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(SinclairACCNT),
             cv.Optional(CONF_CURRENT_TEMPERATURE_SENSOR): cv.use_id(sensor.Sensor),
+            cv.Optional(CONF_I_FEEL_SENSOR): cv.use_id(sensor.Sensor),
             cv.Optional(CONF_FAN_SPEEDS, default=5): cv.one_of(3, 5, int=True),
             cv.Optional(CONF_QUIET_MODE, default=True): cv.boolean,
             cv.Optional(CONF_TURBO_MODE, default=True): cv.boolean,
@@ -196,6 +198,10 @@ async def to_code(config):
         display_unit_select = await select.new_select(conf, options=DISPLAY_UNIT_OPTIONS)
         await cg.register_component(display_unit_select, conf)
         cg.add(var.set_display_unit_select(display_unit_select))
+
+    if CONF_I_FEEL_SENSOR in config:
+        sens = await cg.get_variable(config[CONF_I_FEEL_SENSOR])
+        cg.add(var.set_i_feel_sensor(sens))
 
     if CONF_CURRENT_TEMPERATURE_SENSOR in config:
         sens = await cg.get_variable(config[CONF_CURRENT_TEMPERATURE_SENSOR])

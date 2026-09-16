@@ -8,6 +8,8 @@
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 
+#include <cmath>
+
 namespace esphome {
 
 namespace sinclair_ac {
@@ -128,6 +130,7 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         void set_beeper_switch(switch_::Switch *beeper_switch);
 
         void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
+        void set_i_feel_sensor(sensor::Sensor *i_feel_sensor);
 
         /* Unit capabilities, see climate.py */
         void set_fan_speeds(uint8_t fan_speeds) { this->fan_speeds_ = fan_speeds; }
@@ -155,6 +158,8 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         switch_::Switch *beeper_switch_          = nullptr; /* Switch for beeper (ON = unit beeps on commands) */
 
         sensor::Sensor *current_temperature_sensor_ = nullptr; /* If user wants to replace reported temperature by an external sensor readout */
+        sensor::Sensor *i_feel_sensor_ = nullptr;   /* experimental: temperature sent to the unit as I FEEL (like the remote does over IR) */
+        float i_feel_temperature_ = NAN;            /* last value of i_feel_sensor_ */
 
         std::string vertical_swing_state_;
         std::string horizontal_swing_state_;

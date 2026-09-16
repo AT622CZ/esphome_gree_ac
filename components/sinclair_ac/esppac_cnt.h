@@ -99,6 +99,18 @@ namespace protocol {
     static const uint8_t REPORT_DISP_MODE_BYTE = 9;
     static const uint8_t REPORT_DISP_MODE_MASK = 0b00110000;
     static const uint8_t REPORT_DISP_MODE_POS  = 4;
+
+    /* I FEEL (seen in reports of a Coolexpert ACH-09BI while toggling I FEEL on the remote):
+       byte 9 bit6 = I FEEL active, byte 24 = temperature measured by the remote in C,
+       byte 42 then follows the remote's value instead of the unit's own sensor.
+       SET shares the layout, so the same bytes are used to send an external temperature. */
+    static const uint8_t REPORT_IFEEL_BYTE     = 9;
+    static const uint8_t REPORT_IFEEL_MASK     = 0b01000000;
+    static const uint8_t REPORT_IFEEL_TEMP_BYTE = 24;
+
+    /* byte 37 bit7 is set for ~6 s after the unit received a command from the IR remote */
+    static const uint8_t REPORT_REMOTE_CMD_BYTE = 37;
+    static const uint8_t REPORT_REMOTE_CMD_MASK = 0b10000000;
     static const uint8_t REPORT_DISP_MODE_AUTO     = 0;
     static const uint8_t REPORT_DISP_MODE_SET      = 1;
     static const uint8_t REPORT_DISP_MODE_ACT      = 2;
@@ -173,6 +185,9 @@ class SinclairACCNT : public SinclairAC {
         ACState state_ = ACState::Initializing; /* Stores if the AC is responsive or not */
         ACUpdate update_ = ACUpdate::NoUpdate;  /* Stores if we need tu send update to AC or no */
         bool publish_pending_ = false;          /* Publish climate state on next handled report even if unchanged */
+        bool ifeel_reported_ = false;           /* diagnostics: last I FEEL state / temperature / remote flag seen in reports */
+        uint8_t ifeel_temp_reported_ = 0;
+        bool remote_cmd_reported_ = false;
 
         climate::ClimateMode mode_internal_;
         bool power_internal_;
