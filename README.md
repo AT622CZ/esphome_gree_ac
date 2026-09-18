@@ -51,6 +51,7 @@ climate:
     quiet_mode: false
     turbo_mode: true
     horizontal_swing: false
+    partial_swing: false
     current_temperature_formula: gree
     display_modes: [display_off, set_temperature, actual_temperature]
     # optional entities, remove the ones the unit does not have
@@ -79,6 +80,7 @@ Unit capability options (all optional):
 | `quiet_mode` | `true`, `false` | `true` | offer the Quiet fan mode (separate flag in the protocol; the app sends it even to units whose remote has no Quiet button) |
 | `turbo_mode` | `true`, `false` | `true` | offer the Turbo fan mode (separate flag, independent of the speed) |
 | `horizontal_swing` | `true`, `false` | `true` | `false` for units without motorized horizontal louvers: the climate entity offers only Off / Vertical swing, no horizontal position is ever requested and `horizontal_swing_select` is not allowed |
+| `partial_swing` | `true`, `false` | `true` | `false` for units whose louver only swings over the full range: `vertical_swing_select` then offers Off, full swing and the fixed positions only. Such units still report a partial range when the remote selects one (and swing over the full range anyway); that state is shown as full swing. |
 | `current_temperature_formula` | `sinclair`, `gree` | `sinclair` | how the room temperature byte is decoded: `sinclair` = `(raw - 16) / 2`, `gree` = `raw - 40`. Both give 24 °C for the same byte, at other temperatures they differ by 1-2 °C. Check: let the unit show the room temperature on its display (`display_select` -> Actual temperature, shown for a few seconds) and compare with HA. |
 | `display_modes` | list of `display_off`, `auto`, `set_temperature`, `actual_temperature`, `outside_temperature` | all five | options offered by `display_select`. `auto` is the unit's "no indication" state (shows the set temperature). A state reported by the unit that is not in the list is mapped to the closest one offered (`auto` -> `set_temperature`). Use it for units that cannot show the outside temperature. |
 | `beeper_byte`, `beeper_mask` | `0..44`, `1..255` | `40`, `0x01` | experimental: where the "execute silently" flag is placed in the SET packet. Some units ignore the default flag and keep beeping; these options let you try other bits without touching the code. |

@@ -44,6 +44,7 @@ CONF_TURBO_MODE                 = "turbo_mode"        # False to hide the Turbo 
 CONF_HORIZONTAL_SWING           = "horizontal_swing"  # False for units without motorized horizontal louvers
 CONF_CURRENT_TEMPERATURE_FORMULA = "current_temperature_formula"  # sinclair: (raw-16)/2, gree: raw-40
 CONF_DISPLAY_MODES              = "display_modes"     # subset of display modes offered in display_select
+CONF_PARTIAL_SWING              = "partial_swing"     # False for units that only swing over the full range
 
 # I FEEL over IR: the unit accepts the room temperature only from the IR remote, so the component can
 # play the remote through a remote_transmitter (IR LED, or wired to the IR receiver output)
@@ -84,6 +85,9 @@ VERTICAL_SWING_OPTIONS = [
     "10 - Constant - Mid-Up",
     "11 - Constant - Up",
 ]
+
+# indexes of the partial swing ranges in VERTICAL_SWING_OPTIONS (hidden with partial_swing: false)
+PARTIAL_SWING_INDEXES = (2, 3, 4, 5, 6)
 
 DISPLAY_OPTIONS = [
     "0 - OFF",
@@ -149,6 +153,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_QUIET_MODE, default=True): cv.boolean,
             cv.Optional(CONF_TURBO_MODE, default=True): cv.boolean,
             cv.Optional(CONF_HORIZONTAL_SWING, default=True): cv.boolean,
+            cv.Optional(CONF_PARTIAL_SWING, default=True): cv.boolean,
             cv.Optional(CONF_CURRENT_TEMPERATURE_FORMULA, default="sinclair"): cv.one_of(
                 "sinclair", "gree", lower=True
             ),
@@ -182,6 +187,7 @@ async def to_code(config):
     cg.add(var.set_quiet_mode(config[CONF_QUIET_MODE]))
     cg.add(var.set_turbo_mode(config[CONF_TURBO_MODE]))
     cg.add(var.set_horizontal_swing(config[CONF_HORIZONTAL_SWING]))
+    cg.add(var.set_partial_swing(config[CONF_PARTIAL_SWING]))
     cg.add(var.set_current_temperature_gree(config[CONF_CURRENT_TEMPERATURE_FORMULA] == "gree"))
     cg.add(var.set_beeper_flag(config[CONF_BEEPER_BYTE], config[CONF_BEEPER_MASK]))
     display_mask = 0
@@ -207,7 +213,12 @@ async def to_code(config):
 
     if CONF_VERTICAL_SWING_SELECT in config:
         conf = config[CONF_VERTICAL_SWING_SELECT]
-        vswing_select = await select.new_select(conf, options=VERTICAL_SWING_OPTIONS)
+        # without partial_swing only Off, full swing and the fixed positions are offered
+        vswing_options = [
+            o for i, o in enumerate(VERTICAL_SWING_OPTIONS)
+            if config[CONF_PARTIAL_SWING] or i not in PARTIAL_SWING_INDEXES
+        ]
+        vswing_select = await select.new_select(conf, options=vswing_options)
         await cg.register_component(vswing_select, conf)
         cg.add(var.set_vertical_swing_select(vswing_select))
     

@@ -237,6 +237,21 @@ void SinclairAC::update_swing_vertical(const std::string &swing)
     }
 }
 
+const std::string &SinclairAC::vertical_swing_offered(const std::string &swing)
+{
+    /* Units without partial swing ranges still report them when the remote selects one
+       (the louver then simply swings over the full range): show that as full swing, the
+       select does not offer the partial ranges and must not get an unknown option. */
+    if (!this->partial_swing_ &&
+        (swing == vertical_swing_options::DOWN || swing == vertical_swing_options::MIDD ||
+         swing == vertical_swing_options::MID || swing == vertical_swing_options::MIDU ||
+         swing == vertical_swing_options::UP))
+    {
+        return vertical_swing_options::FULL;
+    }
+    return swing;
+}
+
 const std::string &SinclairAC::display_mode_offered(const std::string &display)
 {
     /* index in display_options order: OFF, AUTO, SET, ACT, OUT */

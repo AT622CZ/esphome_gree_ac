@@ -868,7 +868,7 @@ bool SinclairACCNT::processUnitReport()
         this->update_current_temperature(newCurrentTemperature);
     }
 
-    std::string verticalSwing = determine_vertical_swing();
+    std::string verticalSwing = this->vertical_swing_offered(determine_vertical_swing());
     std::string horizontalSwing = determine_horizontal_swing();
 
     this->update_swing_vertical(verticalSwing);
