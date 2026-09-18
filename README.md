@@ -111,6 +111,25 @@ climate:
 | `i_feel_switch` | switch | - | turn I FEEL on/off from HA (default ON, state restored); without it I FEEL is always kept on while the sensor has a value |
 | `i_feel_header_mark`, `i_feel_header_space` | microseconds | `6000`, `3000` | header of the temperature frame. The unit tells a temperature frame from a command by this header and drops anything else as noise. Two values are in the wild: `6000`/`3000` (newer remotes; confirmed on Coolexpert ACH-09BI) and `8200`/`3800`. If the unit reports I FEEL active but its I FEEL temperature never follows the sensor, try the other pair. |
 
+Wiring for I FEEL without an IR LED:
+
+Instead of an IR LED the ESP can drive the output of the unit's own IR receiver. The receiver output is an open-collector style line, idle high through a pull-up on the unit board and pulled low while an IR mark is received, so a second open collector in parallel works as a wired AND and the original remote keeps working.
+
+![I FEEL wiring](./images/ifeel_wiring.svg)
+
+* Any small NPN transistor does the job: KC148, BC547, 2N2222 ... Check the pinout of the one you use, it differs between families. Base through 1 kΩ (up to 10 kΩ is fine) from the GPIO, emitter to GND, collector to the OUT pin of the IR receiver (3-pin module VCC / GND / OUT, usually on the display board).
+* Do not connect the GPIO to the line directly or through a diode only: the line idles at 5 V and ESP32 pins are not 5 V tolerant.
+* `remote_transmitter` needs `carrier_duty_percent: 100%` because the line behind the receiver is already demodulated, and no `inverted` because the transistor inverts.
+* Ground is shared through the WiFi module connector.
+
+```yaml
+remote_transmitter:
+  - id: ir_tx
+    pin:
+      number: GPIO4
+    carrier_duty_percent: 100%
+```
+
 Fan modes offered in HA (the number prefix keeps the dropdown ordered):
 
 | `fan_speeds: 5` | `fan_speeds: 3` | protocol |
