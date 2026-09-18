@@ -109,7 +109,7 @@ climate:
 | `i_feel_sensor` | id of a `sensor` | - | temperature in °C the unit should regulate by; requires `ir_transmitter_id` |
 | `i_feel_interval` | time, min `10s` | `1min` | resend period of the temperature frame (the remote uses 10 minutes) |
 | `i_feel_switch` | switch | - | turn I FEEL on/off from HA (default ON, state restored); without it I FEEL is always kept on while the sensor has a value |
-| `i_feel_header_mark`, `i_feel_header_space` | microseconds | `6000`, `3000` | header of the temperature frame. The unit tells a temperature frame from a command by this header and drops anything else as noise. Two values are in the wild: `6000`/`3000` (newer remotes) and `8200`/`3800`. If the unit reports I FEEL active but its I FEEL temperature never follows the sensor, try the other pair. |
+| `i_feel_header_mark`, `i_feel_header_space` | microseconds | `6000`, `3000` | header of the temperature frame. The unit tells a temperature frame from a command by this header and drops anything else as noise. Two values are in the wild: `6000`/`3000` (newer remotes; confirmed on Coolexpert ACH-09BI) and `8200`/`3800`. If the unit reports I FEEL active but its I FEEL temperature never follows the sensor, try the other pair. |
 
 Fan modes offered in HA (the number prefix keeps the dropdown ordered):
 

@@ -75,3 +75,9 @@ I FEEL on, the unit reports it within 300 ms (report byte 9 bit6) together with 
 received" flag. Every UART change packet (0xAF) switches I FEEL off again, **also when the packet
 carries the I FEEL bit and a temperature** (bytes 9 and 24), so those fields are not used over UART
 at all. The component re-activates I FEEL over IR about 1.5 s after a change from HA.
+
+Confirmed on the Coolexpert ACH-09BI (2026-09-18): with the 6000/3000 header the unit takes the
+IR temperature frame within ~400 ms: report byte 24 shows the value sent (27, 36, 41 C were all
+accepted, so there is no plausibility limit around 40 C) and the room temperature in byte 42
+follows it (`value + 40`). Home Assistant therefore shows the external sensor as current
+temperature while I FEEL is active.
