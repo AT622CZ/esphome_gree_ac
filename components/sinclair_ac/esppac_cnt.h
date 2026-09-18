@@ -178,7 +178,8 @@ namespace protocol {
     static const uint8_t  IR_B5_IFEEL          = 0x04;
 
     /* I FEEL supervision */
-    static const unsigned long I_FEEL_SETTLE_MS    = 3000;  /* wait after a change over UART before touching IR */
+    static const unsigned long I_FEEL_SETTLE_MS    = 1500;  /* wait after a change over UART before touching IR */
+    static const unsigned long I_FEEL_NO_VALUE_MS  = 60000; /* warn when i_feel_sensor stays without a value */
     static const unsigned long I_FEEL_RETRY_MS     = 10000; /* between activation attempts */
     static const uint8_t       I_FEEL_MAX_ATTEMPTS = 3;
 }
@@ -220,6 +221,7 @@ class SinclairACCNT : public SinclairAC {
         uint32_t i_feel_last_temp_ms_ = 0;      /* last IR temperature frame */
         uint8_t i_feel_attempts_ = 0;           /* IR commands sent without the unit confirming the I FEEL state */
         bool i_feel_gave_up_ = false;
+        bool i_feel_no_value_warned_ = false;
 
         void i_feel_loop_();
         void ir_send_i_feel_command_(bool enable);

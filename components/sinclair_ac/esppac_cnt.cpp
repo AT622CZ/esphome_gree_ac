@@ -455,22 +455,6 @@ void SinclairACCNT::send_packet()
     }
 
 
-    /* I FEEL --------------------------------------------------------------------------- */
-    /* The unit applies the I FEEL flag from a change packet, so a packet without it switches
-       I FEEL off (seen on a Coolexpert ACH-09BI: every change from HA dropped it). Keep what
-       the unit reports, or what i_feel_sensor asks for, together with the temperature. */
-    {
-        bool i_feel_wanted = this->i_feel_sensor_ != nullptr && this->i_feel_enabled_ &&
-                             !std::isnan(this->i_feel_temperature_);
-        bool i_feel_refused = this->i_feel_sensor_ != nullptr && !this->i_feel_enabled_;
-        if ((this->ifeel_reported_ || i_feel_wanted) && !i_feel_refused)
-        {
-            packet[protocol::REPORT_IFEEL_BYTE] |= protocol::REPORT_IFEEL_MASK;
-            packet[protocol::REPORT_IFEEL_TEMP_BYTE] =
-                i_feel_wanted ? this->i_feel_temperature_byte_() : this->ifeel_temp_reported_;
-        }
-    }
-
     /* BEEPER --------------------------------------------------------------------------- */
     if (!this->beeper_state_)
     {
@@ -678,7 +662,15 @@ void SinclairACCNT::i_feel_loop_()
     /* I FEEL is wanted but the sensor has no value yet (e.g. right after boot, before Home
        Assistant connected): leave the unit as it is, do not switch a running I FEEL off */
     if (this->i_feel_enabled_ && std::isnan(this->i_feel_temperature_))
+    {
+        if (!this->i_feel_no_value_warned_ && now >= protocol::I_FEEL_NO_VALUE_MS)
+        {
+            ESP_LOGW(TAG, "i_feel_sensor has no value, I FEEL is not managed (check the sensor / entity id)");
+            this->i_feel_no_value_warned_ = true;
+        }
         return;
+    }
+    this->i_feel_no_value_warned_ = false;
 
     bool want = this->i_feel_enabled_;
     bool active = this->ifeel_reported_;

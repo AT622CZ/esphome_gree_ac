@@ -86,7 +86,7 @@ Unit capability options (all optional):
 
 I FEEL (regulate by an external room sensor):
 
-The unit accepts a room temperature from outside only through its IR receiver; the same fields in the UART protocol are ignored. With a `remote_transmitter` the component plays the IR remote: a full Gree command with the I FEEL bit switches the function on (built from the state reported over UART, so nothing else changes), then short temperature frames are sent on every whole-degree change and every `i_feel_interval`. The unit confirms over UART, so the component knows whether I FEEL is really active, re-activates it after every power on (the unit drops it when switched off) and gives up after 3 unanswered commands, because each command makes the unit beep. Temperature frames do not beep.
+The unit accepts a room temperature from outside only through its IR receiver; the same fields in the UART protocol are ignored. With a `remote_transmitter` the component plays the IR remote: a full Gree command with the I FEEL bit switches the function on (built from the state reported over UART, so nothing else changes), then short temperature frames are sent on every whole-degree change and every `i_feel_interval`. The unit confirms over UART, so the component knows whether I FEEL is really active, re-activates it after every power on and after every change from HA (the unit drops I FEEL when switched off and on every command received over UART) and gives up after 3 unanswered commands, because each command makes the unit beep. Temperature frames do not beep.
 
 ```yaml
 remote_transmitter:
