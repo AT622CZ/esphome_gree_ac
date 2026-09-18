@@ -6,6 +6,7 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/switch/switch.h"
 #include "esphome/components/uart/uart.h"
+#include "esphome/components/remote_base/remote_base.h"
 #include "esphome/core/component.h"
 
 #include <cmath>
@@ -128,6 +129,7 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         void set_xfan_switch(switch_::Switch *plasma_switch);
         void set_save_switch(switch_::Switch *plasma_switch);
         void set_beeper_switch(switch_::Switch *beeper_switch);
+        void set_i_feel_switch(switch_::Switch *i_feel_switch);
 
         void set_current_temperature_sensor(sensor::Sensor *current_temperature_sensor);
 
@@ -139,6 +141,11 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         void set_current_temperature_gree(bool gree) { this->current_temperature_gree_ = gree; }
         void set_beeper_flag(uint8_t byte, uint8_t mask) { this->beeper_byte_ = byte; this->beeper_mask_ = mask; }
         void set_display_modes(uint8_t mask) { this->display_modes_ = mask; }
+
+        /* I FEEL over IR, see climate.py */
+        void set_ir_transmitter(remote_base::RemoteTransmitterBase *ir_transmitter) { this->ir_transmitter_ = ir_transmitter; }
+        void set_i_feel_sensor(sensor::Sensor *i_feel_sensor);
+        void set_i_feel_interval(uint32_t interval_ms) { this->i_feel_interval_ms_ = interval_ms; }
 
         void setup() override;
         void loop() override;
@@ -155,6 +162,7 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         switch_::Switch *xfan_switch_            = nullptr; /* Switch for X-fan */
         switch_::Switch *save_switch_            = nullptr; /* Switch for save */
         switch_::Switch *beeper_switch_          = nullptr; /* Switch for beeper (ON = unit beeps on commands) */
+        switch_::Switch *i_feel_switch_          = nullptr; /* Switch for I FEEL over IR (ON = unit regulates by i_feel_sensor) */
 
         sensor::Sensor *current_temperature_sensor_ = nullptr; /* If user wants to replace reported temperature by an external sensor readout */
 
@@ -178,6 +186,14 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         uint8_t beeper_byte_ = 40;      /* experimental: SET data byte / mask carrying the "no beep" flag */
         uint8_t beeper_mask_ = 0x01;
         uint8_t display_modes_ = 0x1F;  /* bit i = display mode i offered in display_select (order of display_options) */
+
+        /* I FEEL over IR: the component plays the IR remote through a remote_transmitter */
+        remote_base::RemoteTransmitterBase *ir_transmitter_ = nullptr;
+        sensor::Sensor *i_feel_sensor_ = nullptr;   /* room temperature the unit should regulate by */
+        float i_feel_temperature_ = NAN;            /* last value of i_feel_sensor_ */
+        bool i_feel_temp_dirty_ = false;            /* value changed by a whole degree, send it without waiting for the interval */
+        bool i_feel_enabled_ = true;                /* state of i_feel_switch (always on without the switch) */
+        uint32_t i_feel_interval_ms_ = 60000;       /* resend period of the temperature frame */
 
         /* Map a display mode reported by the unit to the closest one offered in display_select */
         const std::string &display_mode_offered(const std::string &display);

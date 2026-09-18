@@ -51,6 +51,13 @@ void SinclairACCNT::loop()
     }
 
 
+    /* I FEEL over IR: keep the unit regulating by the external sensor */
+    if (this->update_ != ACUpdate::NoUpdate)
+    {
+        this->last_update_ms_ = millis();
+    }
+    this->i_feel_loop_();
+
     /* we will send a packet to the AC as a reponse to indicate changes */
     send_packet();
 
@@ -511,6 +518,182 @@ void SinclairACCNT::send_packet()
 }
 
 /*
+ * I FEEL over IR
+ *
+ * The unit takes the room temperature from outside only through its IR receiver (tested: the
+ * same fields in UART SET packets are ignored). With ir_transmitter_id the component plays the
+ * remote: a full Gree command with the I FEEL bit switches the function on, then short
+ * temperature frames keep it fed, like the remote does every 10 minutes. The command is built
+ * from the last unit report, so it changes nothing but the I FEEL state.
+ */
+
+static void ir_append_bits(remote_base::RemoteTransmitData *data, uint8_t value, uint8_t bits, uint32_t bit_mark)
+{
+    for (uint8_t i = 0; i < bits; i++)
+    {
+        data->mark(bit_mark);
+        data->space((value & 0x01) ? protocol::IR_ONE_SPACE : protocol::IR_ZERO_SPACE);
+        value >>= 1;
+    }
+}
+
+void SinclairACCNT::ir_append_command_(remote_base::RemoteTransmitData *data, bool i_feel)
+{
+    const std::vector<uint8_t> &r = this->last_report_;
+
+    bool    power  = (r[protocol::REPORT_PWR_BYTE] & protocol::REPORT_PWR_MASK) != 0;
+    uint8_t mode   = (r[protocol::REPORT_MODE_BYTE] & protocol::REPORT_MODE_MASK) >> protocol::REPORT_MODE_POS;
+    uint8_t fan    = (r[protocol::REPORT_FAN_SPD2_BYTE] & protocol::REPORT_FAN_SPD2_MASK) >> protocol::REPORT_FAN_SPD2_POS;
+    bool    sleep  = (r[protocol::REPORT_SLEEP_BYTE] & protocol::REPORT_SLEEP_MASK) != 0;
+    uint8_t temp   = (r[protocol::REPORT_TEMP_SET_BYTE] & protocol::REPORT_TEMP_SET_MASK) >> protocol::REPORT_TEMP_SET_POS;
+    bool    turbo  = (r[protocol::REPORT_FAN_TURBO_BYTE] & protocol::REPORT_FAN_TURBO_MASK) != 0;
+    bool    light  = (r[protocol::REPORT_DISP_ON_BYTE] & protocol::REPORT_DISP_ON_MASK) != 0;
+    bool    health = (r[protocol::REPORT_PLASMA1_BYTE] & protocol::REPORT_PLASMA1_MASK) != 0;
+    bool    xfan   = (r[protocol::REPORT_XFAN_BYTE] & protocol::REPORT_XFAN_MASK) != 0;
+    bool    use_f  = (r[protocol::REPORT_DISP_F_BYTE] & protocol::REPORT_DISP_F_MASK) != 0;
+    bool    half_f = (r[protocol::REPORT_DISP_F_BYTE] & 0x40) != 0;
+    uint8_t vswing = (r[protocol::REPORT_VSWING_BYTE] & protocol::REPORT_VSWING_MASK) >> protocol::REPORT_VSWING_POS;
+    uint8_t hswing = (r[protocol::REPORT_HSWING_BYTE] & protocol::REPORT_HSWING_MASK) >> protocol::REPORT_HSWING_POS;
+    uint8_t disp   = (r[protocol::REPORT_DISP_MODE_BYTE] & protocol::REPORT_DISP_MODE_MASK) >> protocol::REPORT_DISP_MODE_POS;
+    bool    save   = (r[protocol::REPORT_SAVE_BYTE] & protocol::REPORT_SAVE_MASK) != 0;
+
+    /* louver position codes are the same on UART and IR; the IR frame also flags the swinging ones */
+    bool swing_auto = (vswing == protocol::REPORT_VSWING_FULL) || (vswing >= protocol::REPORT_VSWING_DOWN);
+
+    uint8_t b[8];
+    b[0] = mode | (power ? 0x08 : 0) | (fan << 4) | (swing_auto ? 0x40 : 0) | (sleep ? 0x80 : 0);
+    b[1] = temp;
+    b[2] = (turbo ? 0x10 : 0) | (light ? 0x20 : 0) | (health ? 0x40 : 0) | (xfan ? 0x80 : 0);
+    b[3] = 0x50 | (use_f ? 0x08 : 0) | (half_f ? 0x04 : 0);
+    b[4] = vswing | (hswing << 4);
+    b[5] = disp | protocol::IR_B5_CONST | (i_feel ? protocol::IR_B5_IFEEL : 0);
+    b[6] = 0x00;
+    b[7] = (save ? 0x04 : 0);
+    uint8_t sum = ((b[0] & 0x0F) + (b[1] & 0x0F) + (b[2] & 0x0F) + (b[3] & 0x0F) +
+                   (b[4] >> 4) + (b[5] >> 4) + (b[6] >> 4) + 0x0A) & 0x0F;
+    b[7] |= (sum << 4);
+
+    ESP_LOGD(TAG, "IR command %02X %02X %02X %02X %02X %02X %02X %02X (I FEEL %s)",
+             b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], i_feel ? "on" : "off");
+
+    data->mark(protocol::IR_HDR_MARK);
+    data->space(protocol::IR_HDR_SPACE);
+    for (uint8_t i = 0; i < 4; i++)
+        ir_append_bits(data, b[i], 8, protocol::IR_BIT_MARK);
+    ir_append_bits(data, 0b010, 3, protocol::IR_BIT_MARK);
+    data->mark(protocol::IR_BIT_MARK);
+    data->space(protocol::IR_MSG_SPACE);
+    for (uint8_t i = 4; i < 8; i++)
+        ir_append_bits(data, b[i], 8, protocol::IR_BIT_MARK);
+    data->mark(protocol::IR_BIT_MARK);
+}
+
+void SinclairACCNT::ir_append_temperature_(remote_base::RemoteTransmitData *data)
+{
+    float t = this->i_feel_temperature_;
+    if (t < 0.0f) t = 0.0f;
+    if (t > 60.0f) t = 60.0f;
+    uint8_t temperature = (uint8_t) std::lround(t);
+
+    data->mark(protocol::IR_IFEEL_HDR_MARK);
+    data->space(protocol::IR_IFEEL_HDR_SPACE);
+    ir_append_bits(data, temperature, 8, protocol::IR_IFEEL_BIT_MARK);
+    ir_append_bits(data, protocol::IR_IFEEL_TRAILER, 8, protocol::IR_IFEEL_BIT_MARK);
+    data->mark(protocol::IR_IFEEL_BIT_MARK);
+}
+
+void SinclairACCNT::ir_send_i_feel_command_(bool enable)
+{
+    auto call = this->ir_transmitter_->transmit();
+    auto *data = call.get_data();
+    data->set_carrier_frequency(protocol::IR_CARRIER_HZ);
+    data->reserve(180);
+    this->ir_append_command_(data, enable);
+    if (enable)
+    {
+        /* the remote follows the command with its temperature right away */
+        data->space(protocol::IR_FRAME_GAP);
+        this->ir_append_temperature_(data);
+    }
+    call.set_send_times(1);
+    call.perform();
+}
+
+void SinclairACCNT::ir_send_i_feel_temperature_()
+{
+    ESP_LOGD(TAG, "IR I FEEL temperature %.0f C", this->i_feel_temperature_);
+
+    auto call = this->ir_transmitter_->transmit();
+    auto *data = call.get_data();
+    data->set_carrier_frequency(protocol::IR_CARRIER_HZ);
+    data->reserve(40);
+    this->ir_append_temperature_(data);
+    call.set_send_times(1);
+    call.perform();
+}
+
+void SinclairACCNT::i_feel_loop_()
+{
+    if (this->ir_transmitter_ == nullptr || this->i_feel_sensor_ == nullptr)
+        return;
+    if (this->state_ != ACState::Ready || this->update_ != ACUpdate::NoUpdate)
+        return;
+    if (this->last_report_.size() < protocol::SET_PACKET_LEN)
+        return;
+
+    uint32_t now = millis();
+
+    /* a change over UART is settling: reports may still show the old state */
+    if ((now - this->last_update_ms_) < protocol::I_FEEL_SETTLE_MS)
+        return;
+
+    /* the unit drops I FEEL when powered off; start over at the next power on */
+    bool power = (this->last_report_[protocol::REPORT_PWR_BYTE] & protocol::REPORT_PWR_MASK) != 0;
+    if (!power)
+    {
+        this->i_feel_attempts_ = 0;
+        this->i_feel_gave_up_ = false;
+        return;
+    }
+
+    bool want = this->i_feel_enabled_ && !std::isnan(this->i_feel_temperature_);
+    bool active = this->ifeel_reported_;
+
+    if (want == active)
+    {
+        this->i_feel_attempts_ = 0;
+        this->i_feel_gave_up_ = false;
+        if (active && (this->i_feel_temp_dirty_ || (now - this->i_feel_last_temp_ms_) >= this->i_feel_interval_ms_))
+        {
+            this->i_feel_temp_dirty_ = false;
+            this->i_feel_last_temp_ms_ = now;
+            this->ir_send_i_feel_temperature_();
+        }
+        return;
+    }
+
+    /* the I FEEL state of the unit differs from the wanted one: send the command, a few times
+       at most, because every command makes the unit beep */
+    if (this->i_feel_gave_up_)
+        return;
+    if (this->i_feel_attempts_ > 0 && (now - this->i_feel_last_cmd_ms_) < protocol::I_FEEL_RETRY_MS)
+        return;
+    if (this->i_feel_attempts_ >= protocol::I_FEEL_MAX_ATTEMPTS)
+    {
+        ESP_LOGW(TAG, "Unit did not switch I FEEL %s after %u IR commands, giving up until the next power on",
+                 want ? "on" : "off", this->i_feel_attempts_);
+        this->i_feel_gave_up_ = true;
+        return;
+    }
+
+    this->i_feel_attempts_++;
+    this->i_feel_last_cmd_ms_ = now;
+    this->i_feel_last_temp_ms_ = now;
+    this->i_feel_temp_dirty_ = false;
+    this->ir_send_i_feel_command_(want);
+}
+
+/*
  * Packet handling
  */
 
@@ -568,6 +751,9 @@ void SinclairACCNT::handle_packet()
         this->serialProcess_.data.pop_back();  /* remove checksum */
         /* now process the data */
         bool changed = this->processUnitReport();
+
+        /* keep the raw payload, the IR command for I FEEL is derived from it bit by bit */
+        this->last_report_ = this->serialProcess_.data;
 
         /* diagnostics: I FEEL state and temperature received from the IR remote, and IR command flag */
         bool ifeel = (this->serialProcess_.data[protocol::REPORT_IFEEL_BYTE] & protocol::REPORT_IFEEL_MASK) != 0;

@@ -84,6 +84,32 @@ Unit capability options (all optional):
 | `beeper_byte`, `beeper_mask` | `0..44`, `1..255` | `40`, `0x01` | experimental: where the "execute silently" flag is placed in the SET packet. Some units ignore the default flag and keep beeping; these options let you try other bits without touching the code. |
 | `current_temperature_sensor` | id of a `sensor` | - | use an external sensor as current temperature in HA instead of the unit's own reading (the unit itself still regulates by its own sensor) |
 
+I FEEL (regulate by an external room sensor):
+
+The unit accepts a room temperature from outside only through its IR receiver; the same fields in the UART protocol are ignored. With a `remote_transmitter` the component plays the IR remote: a full Gree command with the I FEEL bit switches the function on (built from the state reported over UART, so nothing else changes), then short temperature frames are sent on every whole-degree change and every `i_feel_interval`. The unit confirms over UART, so the component knows whether I FEEL is really active, re-activates it after every power on (the unit drops it when switched off) and gives up after 3 unanswered commands, because each command makes the unit beep. Temperature frames do not beep.
+
+```yaml
+remote_transmitter:
+  - id: ir_tx
+    pin: GPIOxx
+    carrier_duty_percent: 50%    # IR LED; use 100% when wired to the IR receiver output (no carrier)
+
+climate:
+  - platform: sinclair_ac
+    ir_transmitter_id: ir_tx
+    i_feel_sensor: room_temperature
+    i_feel_interval: 1min
+    i_feel_switch:
+      name: ${devicename} I Feel
+```
+
+| option | values | default | what it does |
+|---|---|---|---|
+| `ir_transmitter_id` | id of a `remote_transmitter` | - | IR LED aimed at the unit, or a wired connection to the output of the unit's IR receiver (open collector through a transistor, `carrier_duty_percent: 100%`; ESP32 pins are not 5 V tolerant) |
+| `i_feel_sensor` | id of a `sensor` | - | temperature in °C the unit should regulate by; requires `ir_transmitter_id` |
+| `i_feel_interval` | time, min `10s` | `1min` | resend period of the temperature frame (the remote uses 10 minutes) |
+| `i_feel_switch` | switch | - | turn I FEEL on/off from HA (default ON, state restored); without it I FEEL is always kept on while the sensor has a value |
+
 Fan modes offered in HA (the number prefix keeps the dropdown ordered):
 
 | `fan_speeds: 5` | `fan_speeds: 3` | protocol |

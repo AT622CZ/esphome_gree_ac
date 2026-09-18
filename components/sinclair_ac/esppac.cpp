@@ -113,6 +113,14 @@ void SinclairAC::setup()
         this->beeper_switch_->publish_state(this->beeper_state_);
     }
 
+    /* I FEEL switch keeps its own state as well (the unit only reports whether I FEEL is active) */
+    if (this->i_feel_switch_ != nullptr)
+    {
+        auto initial = this->i_feel_switch_->get_initial_state_with_restore_mode();
+        this->i_feel_enabled_ = initial.value_or(true);
+        this->i_feel_switch_->publish_state(this->i_feel_enabled_);
+    }
+
     ESP_LOGI(TAG, "Sinclair AC component v%s starting...", VERSION);
 }
 
@@ -440,6 +448,30 @@ void SinclairAC::set_xfan_switch(switch_::Switch *xfan_switch)
         if (state == this->xfan_state_)
             return;
         this->on_xfan_change(state);
+    });
+}
+
+void SinclairAC::set_i_feel_sensor(sensor::Sensor *i_feel_sensor)
+{
+    this->i_feel_sensor_ = i_feel_sensor;
+    this->i_feel_sensor_->add_on_state_callback([this](float state)
+        {
+            if (std::isnan(state))
+                return;
+            /* the IR frame carries whole degrees; a change of the rounded value is sent right away */
+            bool changed = std::isnan(this->i_feel_temperature_) ||
+                           std::lround(state) != std::lround(this->i_feel_temperature_);
+            this->i_feel_temperature_ = state;
+            if (changed)
+                this->i_feel_temp_dirty_ = true;
+        });
+}
+
+void SinclairAC::set_i_feel_switch(switch_::Switch *i_feel_switch)
+{
+    this->i_feel_switch_ = i_feel_switch;
+    this->i_feel_switch_->add_on_state_callback([this](bool state) {
+        this->i_feel_enabled_ = state;
     });
 }
 

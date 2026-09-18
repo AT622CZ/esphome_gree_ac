@@ -158,6 +158,30 @@ namespace protocol {
     /* time constraints */
     static const unsigned long TIME_REFRESH_PERIOD_MS   =  300;
     static const unsigned long TIME_TIMEOUT_INACTIVE_MS = 1000;
+
+    /* Gree IR remote protocol, used to play the remote for I FEEL (the unit ignores I FEEL over UART).
+       Command: header, 4 bytes LSB first, 3 footer bits 010, gap, 4 bytes, end mark.
+       I FEEL temperature: own header, temperature in C, 0xA5, end mark. */
+    static const uint32_t IR_CARRIER_HZ        = 38000;
+    static const uint32_t IR_HDR_MARK          = 9000;
+    static const uint32_t IR_HDR_SPACE         = 4500;
+    static const uint32_t IR_BIT_MARK          = 620;
+    static const uint32_t IR_ONE_SPACE         = 1600;
+    static const uint32_t IR_ZERO_SPACE        = 540;
+    static const uint32_t IR_MSG_SPACE         = 19980;
+    static const uint32_t IR_FRAME_GAP         = 40000;
+    static const uint32_t IR_IFEEL_HDR_MARK    = 8200;
+    static const uint32_t IR_IFEEL_HDR_SPACE   = 3800;
+    static const uint32_t IR_IFEEL_BIT_MARK    = 650;
+    static const uint8_t  IR_IFEEL_TRAILER     = 0xA5;
+    /* command byte 5: bits 0-1 display mode, bit 2 I FEEL, bits 3-5 constant 100 */
+    static const uint8_t  IR_B5_CONST          = 0x20;
+    static const uint8_t  IR_B5_IFEEL          = 0x04;
+
+    /* I FEEL supervision */
+    static const unsigned long I_FEEL_SETTLE_MS    = 3000;  /* wait after a change over UART before touching IR */
+    static const unsigned long I_FEEL_RETRY_MS     = 10000; /* between activation attempts */
+    static const uint8_t       I_FEEL_MAX_ATTEMPTS = 3;
 }
 
 /* Define packets from AC that would be processed by software */
@@ -189,6 +213,20 @@ class SinclairACCNT : public SinclairAC {
         bool ifeel_reported_ = false;           /* diagnostics: last I FEEL state / temperature / remote flag seen in reports */
         uint8_t ifeel_temp_reported_ = 0;
         bool remote_cmd_reported_ = false;
+
+        /* I FEEL over IR */
+        std::vector<uint8_t> last_report_;      /* payload of the last unit report, source of the IR command */
+        uint32_t last_update_ms_ = 0;           /* last time a change over UART was in flight */
+        uint32_t i_feel_last_cmd_ms_ = 0;       /* last IR command (I FEEL on/off) */
+        uint32_t i_feel_last_temp_ms_ = 0;      /* last IR temperature frame */
+        uint8_t i_feel_attempts_ = 0;           /* IR commands sent without the unit confirming the I FEEL state */
+        bool i_feel_gave_up_ = false;
+
+        void i_feel_loop_();
+        void ir_send_i_feel_command_(bool enable);
+        void ir_send_i_feel_temperature_();
+        void ir_append_command_(remote_base::RemoteTransmitData *data, bool i_feel);
+        void ir_append_temperature_(remote_base::RemoteTransmitData *data);
 
 
         climate::ClimateMode mode_internal_;
