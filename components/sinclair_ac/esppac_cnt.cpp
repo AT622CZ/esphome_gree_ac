@@ -593,8 +593,8 @@ uint8_t SinclairACCNT::i_feel_temperature_byte_()
     /* whole degrees C, as the remote sends them */
     float t = this->i_feel_temperature_;
     if (std::isnan(t)) return 0;
-    if (t < 0.0f) t = 0.0f;
-    if (t > 60.0f) t = 60.0f;
+    if (t < I_FEEL_MIN_TEMPERATURE) t = I_FEEL_MIN_TEMPERATURE;
+    if (t > I_FEEL_MAX_TEMPERATURE) t = I_FEEL_MAX_TEMPERATURE;
     return (uint8_t) std::lround(t);
 }
 
@@ -662,18 +662,36 @@ void SinclairACCNT::i_feel_loop_()
 
     /* I FEEL is wanted but the sensor has no value yet (e.g. right after boot, before Home
        Assistant connected): leave the unit as it is, do not switch a running I FEEL off */
-    if (this->i_feel_enabled_ && std::isnan(this->i_feel_temperature_))
+    bool sensor_ok = !std::isnan(this->i_feel_temperature_);
+    if (this->i_feel_enabled_ && !sensor_ok)
     {
-        if (!this->i_feel_no_value_warned_ && now >= protocol::I_FEEL_NO_VALUE_MS)
+        /* A sensor that worked and then went away (unavailable in HA, dead battery, value out of
+           0..59 C) must not leave the unit regulating by a frozen temperature: after a while
+           switch I FEEL off, the unit falls back to its own sensor. */
+        bool lost = this->i_feel_had_value_ &&
+                    (now - this->i_feel_invalid_since_ms_) >= protocol::I_FEEL_SENSOR_LOST_MS;
+        if (!lost)
         {
-            ESP_LOGW(TAG, "i_feel_sensor has no value, I FEEL is not managed (check the sensor / entity id)");
-            this->i_feel_no_value_warned_ = true;
+            if (!this->i_feel_no_value_warned_ && now >= protocol::I_FEEL_NO_VALUE_MS)
+            {
+                ESP_LOGW(TAG, "i_feel_sensor has no value, I FEEL is not managed (check the sensor / entity id)");
+                this->i_feel_no_value_warned_ = true;
+            }
+            return;
         }
-        return;
+        if (!this->i_feel_sensor_lost_)
+        {
+            ESP_LOGW(TAG, "i_feel_sensor lost its value, switching I FEEL off until it comes back");
+            this->i_feel_sensor_lost_ = true;
+        }
     }
-    this->i_feel_no_value_warned_ = false;
+    else
+    {
+        this->i_feel_no_value_warned_ = false;
+        this->i_feel_sensor_lost_ = false;
+    }
 
-    bool want = this->i_feel_enabled_;
+    bool want = this->i_feel_enabled_ && sensor_ok;
     bool active = this->ifeel_reported_;
 
     if (want == active)

@@ -456,8 +456,17 @@ void SinclairAC::set_i_feel_sensor(sensor::Sensor *i_feel_sensor)
     this->i_feel_sensor_ = i_feel_sensor;
     this->i_feel_sensor_->add_on_state_callback([this](float state)
         {
-            if (std::isnan(state))
+            /* Sensor lost (HA reports unavailable/unknown as NaN) or a value the unit would not take:
+               the unit accepts 0..59 C over IR and silently falls back to its own sensor above that.
+               Remember since when, the unit must not keep regulating by a frozen temperature. */
+            if (std::isnan(state) || state < I_FEEL_MIN_TEMPERATURE || state > I_FEEL_MAX_TEMPERATURE)
+            {
+                if (!std::isnan(this->i_feel_temperature_) || !this->i_feel_had_value_)
+                    this->i_feel_invalid_since_ms_ = millis();
+                this->i_feel_temperature_ = NAN;
                 return;
+            }
+            this->i_feel_had_value_ = true;
             /* the IR frame carries whole degrees; a change of the rounded value is sent right away */
             bool changed = std::isnan(this->i_feel_temperature_) ||
                            std::lround(state) != std::lround(this->i_feel_temperature_);

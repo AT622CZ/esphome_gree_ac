@@ -25,6 +25,10 @@ static const float TEMPERATURE_STEP = 1.0;   // Steps the temperature can be set
 static const float TEMPERATURE_TOLERANCE = 2;  // The tolerance to allow when checking the climate state
 static const uint8_t TEMPERATURE_THRESHOLD = 100;  // Maximum temperature the AC can report (formally 119.5 for sinclair protocol, but 100 is impossible, soo...)
 
+/* I FEEL temperature the unit accepts over IR (tested on a Coolexpert ACH-09BI: 59 is taken, 60 is not) */
+static const float I_FEEL_MIN_TEMPERATURE = 0.0f;
+static const float I_FEEL_MAX_TEMPERATURE = 59.0f;
+
 enum class FanMode : uint8_t {
     Auto,
     Quiet,
@@ -193,6 +197,8 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         sensor::Sensor *i_feel_sensor_ = nullptr;   /* room temperature the unit should regulate by */
         float i_feel_temperature_ = NAN;            /* last value of i_feel_sensor_ */
         bool i_feel_temp_dirty_ = false;            /* value changed by a whole degree, send it without waiting for the interval */
+        bool i_feel_had_value_ = false;             /* the sensor has delivered a valid value at least once */
+        uint32_t i_feel_invalid_since_ms_ = 0;      /* millis() when the sensor value was lost */
         bool i_feel_enabled_ = true;                /* state of i_feel_switch (always on without the switch) */
         uint32_t i_feel_interval_ms_ = 60000;       /* resend period of the temperature frame */
         uint32_t i_feel_header_mark_ = 6000;        /* header of the I FEEL temperature frame, microseconds */

@@ -81,3 +81,6 @@ IR temperature frame within ~400 ms: report byte 24 shows the value sent (27, 36
 accepted, so there is no plausibility limit around 40 C) and the room temperature in byte 42
 follows it (`value + 40`). Home Assistant therefore shows the external sensor as current
 temperature while I FEEL is active.
+
+Range of the I FEEL temperature (Coolexpert ACH-09BI, found by the user): 59 C is accepted,
+60 C is not; above the limit the unit silently uses its own sensor again.

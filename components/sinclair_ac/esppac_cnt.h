@@ -184,6 +184,7 @@ namespace protocol {
     /* I FEEL supervision */
     static const unsigned long I_FEEL_SETTLE_MS    = 1500;  /* wait after a change over UART before touching IR */
     static const unsigned long I_FEEL_NO_VALUE_MS  = 60000; /* warn when i_feel_sensor stays without a value */
+    static const unsigned long I_FEEL_SENSOR_LOST_MS = 300000; /* sensor lost for this long: switch I FEEL off, back to the unit sensor */
     static const unsigned long I_FEEL_RETRY_MS     = 10000; /* between activation attempts */
     static const uint8_t       I_FEEL_MAX_ATTEMPTS = 3;
 }
@@ -226,6 +227,7 @@ class SinclairACCNT : public SinclairAC {
         uint8_t i_feel_attempts_ = 0;           /* IR commands sent without the unit confirming the I FEEL state */
         bool i_feel_gave_up_ = false;
         bool i_feel_no_value_warned_ = false;
+        bool i_feel_sensor_lost_ = false;       /* I FEEL switched off because the sensor value was lost */
 
         void i_feel_loop_();
         void ir_send_i_feel_command_(bool enable);
