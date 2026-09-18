@@ -169,7 +169,6 @@ namespace protocol {
     static const uint32_t IR_ONE_SPACE         = 1600;
     static const uint32_t IR_ZERO_SPACE        = 540;
     static const uint32_t IR_MSG_SPACE         = 19980;
-    static const uint32_t IR_FRAME_GAP         = 40000;
     static const uint32_t IR_IFEEL_HDR_MARK    = 8200;
     static const uint32_t IR_IFEEL_HDR_SPACE   = 3800;
     static const uint32_t IR_IFEEL_BIT_MARK    = 650;
@@ -227,6 +226,7 @@ class SinclairACCNT : public SinclairAC {
         void ir_send_i_feel_temperature_();
         void ir_append_command_(remote_base::RemoteTransmitData *data, bool i_feel);
         void ir_append_temperature_(remote_base::RemoteTransmitData *data);
+        uint8_t i_feel_temperature_byte_();
 
 
         climate::ClimateMode mode_internal_;

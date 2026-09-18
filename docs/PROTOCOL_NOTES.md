@@ -66,3 +66,8 @@ Observed on the Coolexpert ACH-09BI: temperature frames alone are ignored while 
 inactive (report byte 9 bit6 = 0); the command with the I FEEL bit has to come first. The
 position of the I FEEL bit (byte 5 bit 2) follows the IRremoteESP8266 documentation of the
 protocol; HeatpumpIR puts it at byte 4 bit 3. To be confirmed against a captured remote frame.
+
+Confirmed on the Coolexpert ACH-09BI (2026-09-18): the IR command with byte 5 bit 2 set switches
+I FEEL on, the unit reports it within 300 ms (report byte 9 bit6) together with the "IR command
+received" flag. A UART change packet (0xAF) **without** the I FEEL bit switches it off again, so
+the component mirrors the I FEEL bit and temperature (bytes 9 and 24) in its SET packets.

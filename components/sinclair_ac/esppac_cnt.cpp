@@ -455,6 +455,22 @@ void SinclairACCNT::send_packet()
     }
 
 
+    /* I FEEL --------------------------------------------------------------------------- */
+    /* The unit applies the I FEEL flag from a change packet, so a packet without it switches
+       I FEEL off (seen on a Coolexpert ACH-09BI: every change from HA dropped it). Keep what
+       the unit reports, or what i_feel_sensor asks for, together with the temperature. */
+    {
+        bool i_feel_wanted = this->i_feel_sensor_ != nullptr && this->i_feel_enabled_ &&
+                             !std::isnan(this->i_feel_temperature_);
+        bool i_feel_refused = this->i_feel_sensor_ != nullptr && !this->i_feel_enabled_;
+        if ((this->ifeel_reported_ || i_feel_wanted) && !i_feel_refused)
+        {
+            packet[protocol::REPORT_IFEEL_BYTE] |= protocol::REPORT_IFEEL_MASK;
+            packet[protocol::REPORT_IFEEL_TEMP_BYTE] =
+                i_feel_wanted ? this->i_feel_temperature_byte_() : this->ifeel_temp_reported_;
+        }
+    }
+
     /* BEEPER --------------------------------------------------------------------------- */
     if (!this->beeper_state_)
     {
@@ -588,12 +604,19 @@ void SinclairACCNT::ir_append_command_(remote_base::RemoteTransmitData *data, bo
     data->mark(protocol::IR_BIT_MARK);
 }
 
-void SinclairACCNT::ir_append_temperature_(remote_base::RemoteTransmitData *data)
+uint8_t SinclairACCNT::i_feel_temperature_byte_()
 {
+    /* whole degrees C, as the remote sends them */
     float t = this->i_feel_temperature_;
+    if (std::isnan(t)) return 0;
     if (t < 0.0f) t = 0.0f;
     if (t > 60.0f) t = 60.0f;
-    uint8_t temperature = (uint8_t) std::lround(t);
+    return (uint8_t) std::lround(t);
+}
+
+void SinclairACCNT::ir_append_temperature_(remote_base::RemoteTransmitData *data)
+{
+    uint8_t temperature = this->i_feel_temperature_byte_();
 
     data->mark(protocol::IR_IFEEL_HDR_MARK);
     data->space(protocol::IR_IFEEL_HDR_SPACE);
@@ -607,16 +630,12 @@ void SinclairACCNT::ir_send_i_feel_command_(bool enable)
     auto call = this->ir_transmitter_->transmit();
     auto *data = call.get_data();
     data->set_carrier_frequency(protocol::IR_CARRIER_HZ);
-    data->reserve(180);
+    data->reserve(150);
     this->ir_append_command_(data, enable);
-    if (enable)
-    {
-        /* the remote follows the command with its temperature right away */
-        data->space(protocol::IR_FRAME_GAP);
-        this->ir_append_temperature_(data);
-    }
     call.set_send_times(1);
     call.perform();
+    /* the temperature follows as a frame of its own once the unit reports I FEEL active,
+       see i_feel_loop_() */
 }
 
 void SinclairACCNT::ir_send_i_feel_temperature_()
@@ -656,7 +675,12 @@ void SinclairACCNT::i_feel_loop_()
         return;
     }
 
-    bool want = this->i_feel_enabled_ && !std::isnan(this->i_feel_temperature_);
+    /* I FEEL is wanted but the sensor has no value yet (e.g. right after boot, before Home
+       Assistant connected): leave the unit as it is, do not switch a running I FEEL off */
+    if (this->i_feel_enabled_ && std::isnan(this->i_feel_temperature_))
+        return;
+
+    bool want = this->i_feel_enabled_;
     bool active = this->ifeel_reported_;
 
     if (want == active)
@@ -688,8 +712,8 @@ void SinclairACCNT::i_feel_loop_()
 
     this->i_feel_attempts_++;
     this->i_feel_last_cmd_ms_ = now;
-    this->i_feel_last_temp_ms_ = now;
-    this->i_feel_temp_dirty_ = false;
+    /* send the temperature as soon as the unit confirms I FEEL */
+    this->i_feel_temp_dirty_ = true;
     this->ir_send_i_feel_command_(want);
 }
 
