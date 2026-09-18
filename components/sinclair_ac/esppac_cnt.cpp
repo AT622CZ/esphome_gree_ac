@@ -647,8 +647,11 @@ void SinclairACCNT::i_feel_loop_()
 
     uint32_t now = millis();
 
-    /* a change over UART is settling: reports may still show the old state */
-    if ((now - this->last_update_ms_) < protocol::I_FEEL_SETTLE_MS)
+    /* A change is settling, from HA over UART or from the IR remote (someone stepping the
+       temperature): the IR command carries the whole state, so build it only from a state that
+       has been stable for a moment, otherwise it could undo the last button press. */
+    if ((now - this->last_update_ms_) < protocol::I_FEEL_SETTLE_MS ||
+        (now - this->last_report_change_ms_) < protocol::I_FEEL_SETTLE_MS)
         return;
 
     /* the unit drops I FEEL when powered off; start over at the next power on */
@@ -788,6 +791,10 @@ void SinclairACCNT::handle_packet()
         bool changed = this->processUnitReport();
 
         /* keep the raw payload, the IR command for I FEEL is derived from it bit by bit */
+        if (this->last_report_ != this->serialProcess_.data)
+        {
+            this->last_report_change_ms_ = millis();
+        }
         this->last_report_ = this->serialProcess_.data;
 
         /* diagnostics: I FEEL state and temperature received from the IR remote, and IR command flag */

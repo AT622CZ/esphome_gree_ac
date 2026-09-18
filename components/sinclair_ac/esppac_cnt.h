@@ -222,6 +222,7 @@ class SinclairACCNT : public SinclairAC {
         /* I FEEL over IR */
         std::vector<uint8_t> last_report_;      /* payload of the last unit report, source of the IR command */
         uint32_t last_update_ms_ = 0;           /* last time a change over UART was in flight */
+        uint32_t last_report_change_ms_ = 0;    /* last time the unit report differed from the previous one */
         uint32_t i_feel_last_cmd_ms_ = 0;       /* last IR command (I FEEL on/off) */
         uint32_t i_feel_last_temp_ms_ = 0;      /* last IR temperature frame */
         uint8_t i_feel_attempts_ = 0;           /* IR commands sent without the unit confirming the I FEEL state */
