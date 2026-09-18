@@ -51,6 +51,8 @@ CONF_IR_TRANSMITTER_ID          = "ir_transmitter_id"
 CONF_I_FEEL_SENSOR              = "i_feel_sensor"     # temperature sent to the unit as I FEEL
 CONF_I_FEEL_INTERVAL            = "i_feel_interval"   # resend period of the temperature frame
 CONF_I_FEEL_SWITCH              = "i_feel_switch"     # optional switch to turn I FEEL on/off from HA
+CONF_I_FEEL_HEADER_MARK         = "i_feel_header_mark"   # header of the temperature frame, microseconds
+CONF_I_FEEL_HEADER_SPACE        = "i_feel_header_space"
 
 # keys for CONF_DISPLAY_MODES, same order as DISPLAY_OPTIONS; bit i of the mask passed to C++
 DISPLAY_MODE_KEYS = ["display_off", "auto", "set_temperature", "actual_temperature", "outside_temperature"]
@@ -160,6 +162,8 @@ CONFIG_SCHEMA = cv.All(
                 cv.positive_time_period_milliseconds, cv.Range(min=cv.TimePeriod(seconds=10))
             ),
             cv.Optional(CONF_I_FEEL_SWITCH): beeper_switch_schema,
+            cv.Optional(CONF_I_FEEL_HEADER_MARK, default=6000): cv.int_range(min=1000, max=20000),
+            cv.Optional(CONF_I_FEEL_HEADER_SPACE, default=3000): cv.int_range(min=1000, max=20000),
             cv.Optional(CONF_BEEPER_BYTE, default=40): cv.int_range(min=0, max=44),
             cv.Optional(CONF_BEEPER_MASK, default=0x01): cv.int_range(min=1, max=255),
         }
@@ -193,6 +197,7 @@ async def to_code(config):
         sens = await cg.get_variable(config[CONF_I_FEEL_SENSOR])
         cg.add(var.set_i_feel_sensor(sens))
         cg.add(var.set_i_feel_interval(config[CONF_I_FEEL_INTERVAL]))
+        cg.add(var.set_i_feel_header(config[CONF_I_FEEL_HEADER_MARK], config[CONF_I_FEEL_HEADER_SPACE]))
 
     if CONF_HORIZONTAL_SWING_SELECT in config:
         conf = config[CONF_HORIZONTAL_SWING_SELECT]

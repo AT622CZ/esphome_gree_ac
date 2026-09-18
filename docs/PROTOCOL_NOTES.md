@@ -58,7 +58,10 @@ Since the unit takes I FEEL only from its IR receiver, the component can play th
   the UART report) and horizontal louver (bits 4-6); 5 = display mode (bits 0-1), **I FEEL
   (bit 2)**, constant 0x20; 7 = energy saving (bit 2), checksum (high nibble) = low nibbles of
   bytes 0-3 + high nibbles of bytes 4-6 + 0x0A.
-* I FEEL temperature frame: mark 8200 / space 3800, temperature in whole C, 0xA5, end mark 650.
+* I FEEL temperature frame: header, temperature in whole C, 0xA5, end mark 650. Two header timings
+  are documented: 6000/3000 (HeatpumpIR YAP, ESPHome gree YAC) and 8200/3800 (HeatpumpIR generic).
+  The Coolexpert ACH-09BI ignores 8200/3800 completely (no temperature, no "IR command received"
+  flag) while accepting commands sent through the same transmitter.
 * Old remotes (Coolexpert ACH-09FC, 2011) send only bytes 0-3 and the footer, no second block
   and no checksum; that unit has no I FEEL.
 

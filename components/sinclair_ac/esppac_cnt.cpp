@@ -602,8 +602,8 @@ void SinclairACCNT::ir_append_temperature_(remote_base::RemoteTransmitData *data
 {
     uint8_t temperature = this->i_feel_temperature_byte_();
 
-    data->mark(protocol::IR_IFEEL_HDR_MARK);
-    data->space(protocol::IR_IFEEL_HDR_SPACE);
+    data->mark(this->i_feel_header_mark_);
+    data->space(this->i_feel_header_space_);
     ir_append_bits(data, temperature, 8, protocol::IR_IFEEL_BIT_MARK);
     ir_append_bits(data, protocol::IR_IFEEL_TRAILER, 8, protocol::IR_IFEEL_BIT_MARK);
     data->mark(protocol::IR_IFEEL_BIT_MARK);
@@ -624,7 +624,8 @@ void SinclairACCNT::ir_send_i_feel_command_(bool enable)
 
 void SinclairACCNT::ir_send_i_feel_temperature_()
 {
-    ESP_LOGD(TAG, "IR I FEEL temperature %.0f C", this->i_feel_temperature_);
+    ESP_LOGD(TAG, "IR I FEEL temperature %.0f C (header %u/%u us)", this->i_feel_temperature_,
+             (unsigned) this->i_feel_header_mark_, (unsigned) this->i_feel_header_space_);
 
     auto call = this->ir_transmitter_->transmit();
     auto *data = call.get_data();

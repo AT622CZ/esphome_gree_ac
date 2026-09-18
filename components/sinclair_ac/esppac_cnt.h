@@ -169,8 +169,12 @@ namespace protocol {
     static const uint32_t IR_ONE_SPACE         = 1600;
     static const uint32_t IR_ZERO_SPACE        = 540;
     static const uint32_t IR_MSG_SPACE         = 19980;
-    static const uint32_t IR_IFEEL_HDR_MARK    = 8200;
-    static const uint32_t IR_IFEEL_HDR_SPACE   = 3800;
+    /* I FEEL temperature frame: two header timings are in the wild, 6000/3000 (newer remotes,
+       ESPHome gree YAC, HeatpumpIR YAP) and 8200/3800 (HeatpumpIR generic); the unit tells the
+       temperature frame from a command by the header, so a wrong one is dropped as noise.
+       Defaults here, overridable with i_feel_header_mark / i_feel_header_space. */
+    static const uint32_t IR_IFEEL_HDR_MARK    = 6000;
+    static const uint32_t IR_IFEEL_HDR_SPACE   = 3000;
     static const uint32_t IR_IFEEL_BIT_MARK    = 650;
     static const uint8_t  IR_IFEEL_TRAILER     = 0xA5;
     /* command byte 5: bits 0-1 display mode, bit 2 I FEEL, bits 3-5 constant 100 */

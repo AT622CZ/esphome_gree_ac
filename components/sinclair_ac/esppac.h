@@ -146,6 +146,7 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         void set_ir_transmitter(remote_base::RemoteTransmitterBase *ir_transmitter) { this->ir_transmitter_ = ir_transmitter; }
         void set_i_feel_sensor(sensor::Sensor *i_feel_sensor);
         void set_i_feel_interval(uint32_t interval_ms) { this->i_feel_interval_ms_ = interval_ms; }
+        void set_i_feel_header(uint32_t mark_us, uint32_t space_us) { this->i_feel_header_mark_ = mark_us; this->i_feel_header_space_ = space_us; }
 
         void setup() override;
         void loop() override;
@@ -194,6 +195,8 @@ class SinclairAC : public Component, public uart::UARTDevice, public climate::Cl
         bool i_feel_temp_dirty_ = false;            /* value changed by a whole degree, send it without waiting for the interval */
         bool i_feel_enabled_ = true;                /* state of i_feel_switch (always on without the switch) */
         uint32_t i_feel_interval_ms_ = 60000;       /* resend period of the temperature frame */
+        uint32_t i_feel_header_mark_ = 6000;        /* header of the I FEEL temperature frame, microseconds */
+        uint32_t i_feel_header_space_ = 3000;
 
         /* Map a display mode reported by the unit to the closest one offered in display_select */
         const std::string &display_mode_offered(const std::string &display);
