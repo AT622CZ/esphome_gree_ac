@@ -4,7 +4,7 @@ Captured on the UART between the stock Gree WiFi module and the indoor unit whil
 controlling the unit from the Gree+ app. Byte numbers below are *data* bytes, i.e.
 after `7E 7E LEN CMD` and before the checksum (same numbering as `esppac_cnt.h`).
 Both the report (0x31) and the SET packet (0x01) carry 45 data bytes, indexed 0-44;
-"37 bit7" means data byte 37, bit 7 (mask 0x80):
+"37 bit 7" means data byte 37, bit 7 (mask 0x80):
 
 ```
 7E 7E 2F 01 | 00 00 00 AF B0 10 0A 02 00 ... 82 00 00 00 00 00 | 2D
@@ -19,37 +19,37 @@ Confirmed against the component's byte map:
 | field | data byte / mask | notes |
 |---|---|---|
 | change marker | 3 = 0xAF | first packet of a change only |
-| power / mode / fan coarse | 4: bit7 power, bits 4-6 mode, bits 0-1 fan | 3-speed units: fan 0 auto, 1 low, 2 med, 3 high |
-| sleep | 4 bit3 | |
+| power / mode / fan coarse | 4: bit 7 power, bits 4-6 mode, bits 0-1 fan | 3-speed units: fan 0 auto, 1 low, 2 med, 3 high |
+| sleep | 4 bit 3 | |
 | set temperature | 5 high nibble = temp - 16 | |
-| turbo | 6 bit0 | echoed by the unit in reports |
-| display on | 6 bit1 | |
-| plasma / health | 6 bit2 | |
-| Fahrenheit | 7 bit7, half degree 7 bit6 | set temp in F uses both |
+| turbo | 6 bit 0 | echoed by the unit in reports |
+| display on | 6 bit 1 | |
+| plasma / health | 6 bit 2 | |
+| Fahrenheit | 7 bit 7, half degree 7 bit 6 | set temp in F uses both |
 | vertical swing | 8 high nibble | 1 full, 2-6 fixed, 7 lower third, 9 middle third, 0xB upper third |
 | horizontal swing | 8 low nibble | 0-6 |
 | display mode | 9 bits 4-5 | |
-| save / 8 C heat | 11 bit6 | |
-| quiet | 16 bit3 | app sends it together with fan low even on units whose remote has no Quiet |
+| save / 8 C heat | 11 bit 6 | |
+| quiet | 16 bit 3 | app sends it together with fan low even on units whose remote has no Quiet |
 | fan fine speed | 18 low nibble | app sends 1/2 or 3/5 for low/med/high, 3-speed units ignore it |
 | room temperature (report) | 42 | Gree-based: `raw - 40` (0x36 = 14 C, 0x38 = 16 C); Sinclair: `(raw - 16) / 2` |
-| I FEEL active (report) | 9 bit6 | set while I FEEL is on; cleared by I FEEL off or power off |
+| I FEEL active (report) | 9 bit 6 | set while I FEEL is on; cleared by I FEEL off or power off |
 | I FEEL temperature (report) | 24 | whole °C measured by the remote (0x17 = 23 C); byte 42 then follows this value instead of the unit's own sensor |
-| remote command received (report) | 37 bit7 | set for ~6 s after the unit accepted an IR command |
+| remote command received (report) | 37 bit 7 | set for ~6 s after the unit accepted an IR command |
 
 Differences to the component's handshake:
 
-* The stock module sends a change as **three** packets with data byte 6 bit3 set
-  (first one also with 0xAF), then keeps sending the steady state with bit3 cleared.
-  It never uses the "no change" flag (data byte 11 bit3) the component sends.
+* The stock module sends a change as **three** packets with data byte 6 bit 3 set
+  (first one also with 0xAF), then keeps sending the steady state with bit 3 cleared.
+  It never uses the "no change" flag (data byte 11 bit 3) the component sends.
 * Some captures carry data byte 39 = 0x82 instead of 0x02 and, in a power-off packet,
   data byte 43 = 0x80. Meaning unknown; candidates for the "silent" flag on units that
-  ignore data byte 40 bit0.
+  ignore data byte 40 bit 0.
 * Packets are spaced 300 ms apart regardless of the unit's reports.
 
 Tested on the Coolexpert ACH-09BI (2026-09-16):
 
-* SET packets carrying the I FEEL flag (byte 9 bit6) and a temperature (byte 24) are
+* SET packets carrying the I FEEL flag (byte 9 bit 6) and a temperature (byte 24) are
   ignored, both as a plain update packet and as a 0xAF command. I FEEL cannot be driven
   over UART, only from the IR remote.
 * A SET packet without the "no change" flag but without 0xAF is ignored as well; the unit
@@ -83,12 +83,12 @@ Since the unit takes I FEEL only from its IR receiver, the component can play th
   and no checksum; that unit has no I FEEL.
 
 Observed on the Coolexpert ACH-09BI: temperature frames alone are ignored while I FEEL is
-inactive (report byte 9 bit6 = 0); the command with the I FEEL bit has to come first. The
+inactive (report byte 9 bit 6 = 0); the command with the I FEEL bit has to come first. The
 position of the I FEEL bit (byte 5 bit 2) follows the IRremoteESP8266 documentation of the
 protocol; HeatpumpIR puts it at byte 4 bit 3. To be confirmed against a captured remote frame.
 
 Confirmed on the Coolexpert ACH-09BI (2026-09-18): the IR command with byte 5 bit 2 set switches
-I FEEL on, the unit reports it within 300 ms (report byte 9 bit6) together with the "IR command
+I FEEL on, the unit reports it within 300 ms (report byte 9 bit 6) together with the "IR command
 received" flag. Every UART change packet (0xAF) switches I FEEL off again, **also when the packet
 carries the I FEEL bit and a temperature** (bytes 9 and 24), so those fields are not used over UART
 at all. The component used to re-activate I FEEL over IR about 1.5 s after a change from HA, which
