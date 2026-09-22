@@ -47,6 +47,13 @@ Tested on the Coolexpert ACH-09BI (2026-09-16):
 
 ## I FEEL over IR
 
+I FEEL is remote-side: the unit keeps it only until the next command without the I FEEL bit. UART
+commands never carry it (the 28 SET packets sniffed from the stock module have byte 9 and byte 24
+always 0, and mirroring the bits from the report back into SET does not help either), so a change
+from the app through the stock module drops I FEEL exactly like a change from this component did
+before 2026-09-22. The remote's icon stays on and its 10-minute temperature frames are ignored
+until the next button press.
+
 Since the unit takes I FEEL only from its IR receiver, the component can play the remote
 (`ir_transmitter_id`). Frames, as used by Gree YAC/YAN remotes:
 
