@@ -3,6 +3,16 @@
 Captured on the UART between the stock Gree WiFi module and the indoor unit while
 controlling the unit from the Gree+ app. Byte numbers below are *data* bytes, i.e.
 after `7E 7E LEN CMD` and before the checksum (same numbering as `esppac_cnt.h`).
+Both the report (0x31) and the SET packet (0x01) carry 45 data bytes, indexed 0-44;
+"37 bit7" means data byte 37, bit 7 (mask 0x80):
+
+```
+7E 7E 2F 01 | 00 00 00 AF B0 10 0A 02 00 ... 82 00 00 00 00 00 | 2D
+header      | d0 d1 d2 d3 d4 d5 d6 d7 d8     d39 ...        d44 | checksum
+```
+
+d3 = 0xAF change marker, d4 = 0xB0 = power on (bit 7), mode 3 = fan (bits 4-6),
+fan auto (bits 0-1), d5 = 0x10 = set temperature 1 + 16 = 17 C.
 
 Confirmed against the component's byte map:
 
