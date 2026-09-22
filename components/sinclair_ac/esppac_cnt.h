@@ -187,6 +187,7 @@ namespace protocol {
     static const unsigned long I_FEEL_SENSOR_LOST_MS = 300000; /* sensor lost for this long: switch I FEEL off, back to the unit sensor */
     static const unsigned long I_FEEL_RETRY_MS     = 10000; /* between activation attempts */
     static const uint8_t       I_FEEL_MAX_ATTEMPTS = 3;
+    static const unsigned long IR_CMD_ACK_MS       = 2000;  /* a change sent over IR must show in a report by then, else it goes over UART */
 }
 
 /* Define packets from AC that would be processed by software */
@@ -229,11 +230,16 @@ class SinclairACCNT : public SinclairAC {
         bool i_feel_gave_up_ = false;
         bool i_feel_no_value_warned_ = false;
         bool i_feel_sensor_lost_ = false;       /* I FEEL switched off because the sensor value was lost */
+        bool ir_cmd_pending_ = false;           /* a change from HA went out as an IR command, waiting for the unit to confirm */
+        uint32_t ir_cmd_sent_ms_ = 0;
+        bool ir_cmd_flag_at_send_ = false;      /* IR command flag was already up when it was sent */
 
         void i_feel_loop_();
+        bool ir_route_wanted_();
+        void ir_send_state_command_();
         void ir_send_i_feel_command_(bool enable);
         void ir_send_i_feel_temperature_();
-        void ir_append_command_(remote_base::RemoteTransmitData *data, bool i_feel);
+        void ir_append_command_(remote_base::RemoteTransmitData *data, const std::vector<uint8_t> &r, bool i_feel);
         void ir_append_temperature_(remote_base::RemoteTransmitData *data);
         uint8_t i_feel_temperature_byte_();
 
@@ -247,6 +253,7 @@ class SinclairACCNT : public SinclairAC {
         bool processUnitReport();
 
         void send_packet();
+        void build_set_data_(std::vector<uint8_t> &packet);
 
         bool verify_packet();
         void handle_packet();

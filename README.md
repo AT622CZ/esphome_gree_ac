@@ -88,7 +88,9 @@ Unit capability options (all optional):
 
 I FEEL (regulate by an external room sensor):
 
-The unit accepts a room temperature from outside only through its IR receiver; the same fields in the UART protocol are ignored. With a `remote_transmitter` the component plays the IR remote: a full Gree command with the I FEEL bit switches the function on (built from the state reported over UART, so nothing else changes), then short temperature frames are sent on every whole-degree change and every `i_feel_interval`. The unit confirms over UART, so the component knows whether I FEEL is really active, re-activates it after every power on and after every change from HA (the unit drops I FEEL when switched off and on every command received over UART) and gives up after 3 unanswered commands, because each command makes the unit beep. Temperature frames do not beep.
+The unit accepts a room temperature from outside only through its IR receiver; the same fields in the UART protocol are ignored. With a `remote_transmitter` the component plays the IR remote: a full Gree command with the I FEEL bit switches the function on (built from the state reported over UART, so nothing else changes), then short temperature frames are sent on every whole-degree change and every `i_feel_interval`. The unit confirms over UART, so the component knows whether I FEEL is really active, re-activates it after every power on and gives up after 3 unanswered commands, because each command makes the unit beep. Temperature frames do not beep.
+
+The unit drops I FEEL on every command received over UART. To avoid a double beep (UART command, then the IR command that switches I FEEL back on), changes from HA are sent as a single IR command with the I FEEL bit while I FEEL is wanted, exactly like the remote does: one beep, I FEEL stays on. The unit flags a received IR command in its reports; if neither the flag nor a changed report arrives within 2 s, the change is repeated over UART. The IR frame knows only the fan speeds auto/low/med/high and turbo, so `quiet`, `medlow` and `medhigh` always go over UART (two beeps on such units).
 
 ```yaml
 remote_transmitter:

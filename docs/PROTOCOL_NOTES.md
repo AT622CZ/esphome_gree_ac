@@ -74,7 +74,11 @@ Confirmed on the Coolexpert ACH-09BI (2026-09-18): the IR command with byte 5 bi
 I FEEL on, the unit reports it within 300 ms (report byte 9 bit6) together with the "IR command
 received" flag. Every UART change packet (0xAF) switches I FEEL off again, **also when the packet
 carries the I FEEL bit and a temperature** (bytes 9 and 24), so those fields are not used over UART
-at all. The component re-activates I FEEL over IR about 1.5 s after a change from HA.
+at all. The component used to re-activate I FEEL over IR about 1.5 s after a change from HA, which
+made the unit beep twice (UART command, IR command). Since 2026-09-22 a change from HA is sent as
+one IR command with the I FEEL bit while I FEEL is wanted; the "IR command received" flag
+(report byte 37 bit 7, up for ~6 s) or a changed report confirms it, otherwise the change is
+repeated over UART after 2 s.
 
 Confirmed on the Coolexpert ACH-09BI (2026-09-18): with the 6000/3000 header the unit takes the
 IR temperature frame within ~400 ms: report byte 24 shows the value sent (27, 36, 41 C were all

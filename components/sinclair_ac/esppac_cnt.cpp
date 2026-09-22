@@ -51,8 +51,20 @@ void SinclairACCNT::loop()
     }
 
 
-    /* I FEEL over IR: keep the unit regulating by the external sensor */
-    if (this->update_ != ACUpdate::NoUpdate)
+    /* I FEEL over IR: a change from HA goes as an IR command while I FEEL is wanted (one beep,
+       I FEEL stays on); if the unit does not confirm it in time, it is repeated over UART */
+    if (this->update_ == ACUpdate::UpdateStart && this->ir_route_wanted_())
+    {
+        this->ir_send_state_command_();
+        this->update_ = ACUpdate::NoUpdate;
+    }
+    if (this->ir_cmd_pending_ && (millis() - this->ir_cmd_sent_ms_) >= protocol::IR_CMD_ACK_MS)
+    {
+        ESP_LOGW(TAG, "Unit did not confirm the IR command, sending the change over UART");
+        this->ir_cmd_pending_ = false;
+        this->update_ = ACUpdate::UpdateStart;
+    }
+    if (this->update_ != ACUpdate::NoUpdate || this->ir_cmd_pending_)
     {
         this->last_update_ms_ = millis();
     }
@@ -187,6 +199,54 @@ void SinclairACCNT::send_packet()
             break;
     }
 
+    this->build_set_data_(packet);
+
+    /* Do the command, length */
+    packet.insert(packet.begin(), protocol::CMD_OUT_PARAMS_SET);
+    packet.insert(packet.begin(), protocol::SET_PACKET_LEN + 2); /* Add 2 bytes as we added a command and will add checksum */
+
+    /* Do checksum - sum of all bytes except sync and checksum itself% 0x100 
+       the module would be realized by the fact that we are using uint8_t*/
+    uint8_t checksum = 0;
+    for (uint8_t i = 0 ; i < packet.size() ; i++)
+    {
+        checksum += packet[i];
+    }
+    packet.push_back(checksum);
+
+    /* Do SYNC bytes */
+    packet.insert(packet.begin(), protocol::SYNC);
+    packet.insert(packet.begin(), protocol::SYNC);
+
+    this->last_packet_sent_ = millis();  /* Save the time when we sent the last packet */
+    write_array(packet);                 /* Sent the packet by UART */
+    log_packet(packet, true);            /* Log uart for debug purposes */
+
+    /* update setting state-machine */
+    switch(this->update_)
+    {
+        case ACUpdate::NoUpdate:
+            break;
+        case ACUpdate::UpdateStart:
+            this->update_ = ACUpdate::UpdateClear;
+            break;
+        case ACUpdate::UpdateClear:
+            this->update_ = ACUpdate::NoUpdate;
+            break;
+        default:
+            this->update_ = ACUpdate::NoUpdate;
+            break;
+    }
+}
+
+/*
+ * Fill the settable fields of a SET packet (same byte layout as the unit report) from the
+ * current component state. Shared by the UART packet and by the IR command that replaces it
+ * while I FEEL is active.
+ */
+
+void SinclairACCNT::build_set_data_(std::vector<uint8_t> &packet)
+{
     /* MODE and POWER --------------------------------------------------------------------------- */
     uint8_t mode = protocol::REPORT_MODE_AUTO;
     bool power = false;
@@ -478,43 +538,6 @@ void SinclairACCNT::send_packet()
     {
         packet[protocol::REPORT_SAVE_BYTE] |= protocol::REPORT_SAVE_MASK;
     }
-    
-    /* Do the command, length */
-    packet.insert(packet.begin(), protocol::CMD_OUT_PARAMS_SET);
-    packet.insert(packet.begin(), protocol::SET_PACKET_LEN + 2); /* Add 2 bytes as we added a command and will add checksum */
-
-    /* Do checksum - sum of all bytes except sync and checksum itself% 0x100 
-       the module would be realized by the fact that we are using uint8_t*/
-    uint8_t checksum = 0;
-    for (uint8_t i = 0 ; i < packet.size() ; i++)
-    {
-        checksum += packet[i];
-    }
-    packet.push_back(checksum);
-
-    /* Do SYNC bytes */
-    packet.insert(packet.begin(), protocol::SYNC);
-    packet.insert(packet.begin(), protocol::SYNC);
-
-    this->last_packet_sent_ = millis();  /* Save the time when we sent the last packet */
-    write_array(packet);                 /* Sent the packet by UART */
-    log_packet(packet, true);            /* Log uart for debug purposes */
-
-    /* update setting state-machine */
-    switch(this->update_)
-    {
-        case ACUpdate::NoUpdate:
-            break;
-        case ACUpdate::UpdateStart:
-            this->update_ = ACUpdate::UpdateClear;
-            break;
-        case ACUpdate::UpdateClear:
-            this->update_ = ACUpdate::NoUpdate;
-            break;
-        default:
-            this->update_ = ACUpdate::NoUpdate;
-            break;
-    }
 }
 
 /*
@@ -537,10 +560,8 @@ static void ir_append_bits(remote_base::RemoteTransmitData *data, uint8_t value,
     }
 }
 
-void SinclairACCNT::ir_append_command_(remote_base::RemoteTransmitData *data, bool i_feel)
+void SinclairACCNT::ir_append_command_(remote_base::RemoteTransmitData *data, const std::vector<uint8_t> &r, bool i_feel)
 {
-    const std::vector<uint8_t> &r = this->last_report_;
-
     bool    power  = (r[protocol::REPORT_PWR_BYTE] & protocol::REPORT_PWR_MASK) != 0;
     uint8_t mode   = (r[protocol::REPORT_MODE_BYTE] & protocol::REPORT_MODE_MASK) >> protocol::REPORT_MODE_POS;
     uint8_t fan    = (r[protocol::REPORT_FAN_SPD2_BYTE] & protocol::REPORT_FAN_SPD2_MASK) >> protocol::REPORT_FAN_SPD2_POS;
@@ -615,11 +636,68 @@ void SinclairACCNT::ir_send_i_feel_command_(bool enable)
     auto *data = call.get_data();
     data->set_carrier_frequency(protocol::IR_CARRIER_HZ);
     data->reserve(150);
-    this->ir_append_command_(data, enable);
+    this->ir_append_command_(data, this->last_report_, enable);
     call.set_send_times(1);
     call.perform();
     /* the temperature follows as a frame of its own once the unit reports I FEEL active,
        see i_feel_loop_() */
+}
+
+/*
+ * Changes from HA while I FEEL is wanted: every command over UART makes the unit drop I FEEL,
+ * the component would then switch it on again with an IR command and the unit beeps twice.
+ * Instead the change itself is sent as one IR command carrying the wanted state and the
+ * I FEEL bit, like the remote does: one beep, I FEEL stays on.
+ */
+
+bool SinclairACCNT::ir_route_wanted_()
+{
+    if (this->ir_transmitter_ == nullptr || this->i_feel_sensor_ == nullptr)
+        return false;
+    if (!this->i_feel_enabled_ || std::isnan(this->i_feel_temperature_) || this->i_feel_gave_up_)
+        return false;
+    if (this->last_report_.size() < protocol::SET_PACKET_LEN)
+        return false;
+
+    /* the IR frame knows only auto/low/med/high and turbo; the fine 5-level speeds and quiet
+       must go over UART */
+    if (this->has_custom_fan_mode())
+    {
+        switch (this->fan_mode_from_label(this->get_custom_fan_mode().c_str()))
+        {
+            case FanMode::Quiet:
+            case FanMode::MedLow:
+            case FanMode::MedHigh:
+                return false;
+            default:
+                break;
+        }
+    }
+    return true;
+}
+
+void SinclairACCNT::ir_send_state_command_()
+{
+    std::vector<uint8_t> state(protocol::SET_PACKET_LEN, 0);
+    this->build_set_data_(state);
+
+    ESP_LOGD(TAG, "Sending the change over IR to keep I FEEL active");
+
+    auto call = this->ir_transmitter_->transmit();
+    auto *data = call.get_data();
+    data->set_carrier_frequency(protocol::IR_CARRIER_HZ);
+    data->reserve(150);
+    this->ir_append_command_(data, state, true);
+    call.set_send_times(1);
+    call.perform();
+
+    /* the unit flags a received IR command in its reports for a few seconds; if the flag was
+       already up (a command a moment ago) only a change in the report can confirm this one */
+    this->ir_cmd_pending_ = true;
+    this->ir_cmd_sent_ms_ = millis();
+    this->ir_cmd_flag_at_send_ = this->remote_cmd_reported_;
+    this->i_feel_attempts_ = 0;
+    this->i_feel_temp_dirty_ = true;
 }
 
 void SinclairACCNT::ir_send_i_feel_temperature_()
@@ -640,7 +718,7 @@ void SinclairACCNT::i_feel_loop_()
 {
     if (this->ir_transmitter_ == nullptr || this->i_feel_sensor_ == nullptr)
         return;
-    if (this->state_ != ACState::Ready || this->update_ != ACUpdate::NoUpdate)
+    if (this->state_ != ACState::Ready || this->update_ != ACUpdate::NoUpdate || this->ir_cmd_pending_)
         return;
     if (this->last_report_.size() < protocol::SET_PACKET_LEN)
         return;
@@ -791,7 +869,8 @@ void SinclairACCNT::handle_packet()
         bool changed = this->processUnitReport();
 
         /* keep the raw payload, the IR command for I FEEL is derived from it bit by bit */
-        if (this->last_report_ != this->serialProcess_.data)
+        bool reportChanged = (this->last_report_ != this->serialProcess_.data);
+        if (reportChanged)
         {
             this->last_report_change_ms_ = millis();
         }
@@ -801,6 +880,13 @@ void SinclairACCNT::handle_packet()
         bool ifeel = (this->serialProcess_.data[protocol::REPORT_IFEEL_BYTE] & protocol::REPORT_IFEEL_MASK) != 0;
         uint8_t ifeelTemp = this->serialProcess_.data[protocol::REPORT_IFEEL_TEMP_BYTE];
         bool remoteCmd = (this->serialProcess_.data[protocol::REPORT_REMOTE_CMD_BYTE] & protocol::REPORT_REMOTE_CMD_MASK) != 0;
+
+        /* a change sent over IR is confirmed by the IR command flag going up or by the report changing */
+        if (this->ir_cmd_pending_ && (reportChanged || (remoteCmd && !this->ir_cmd_flag_at_send_)))
+        {
+            ESP_LOGD(TAG, "Unit confirmed the IR command");
+            this->ir_cmd_pending_ = false;
+        }
         if (ifeel != this->ifeel_reported_ || ifeelTemp != this->ifeel_temp_reported_)
         {
             ESP_LOGD(TAG, "Unit reports I FEEL %s, I FEEL temperature %u C", ifeel ? "active" : "inactive", ifeelTemp);
